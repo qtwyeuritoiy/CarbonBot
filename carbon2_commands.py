@@ -94,7 +94,7 @@ def add_echo_command(match, metadata, bot):
 
 from datetime import datetime, date, timedelta
 about = Command(r"!about", "!about", "Show information about this bot.",
-    canned = "Carbon 2.0 alpha\nA Multi-Protocol Bot run by imsesaok.")
+    canned = "Carbon 2.0 alpha\nA Multi-Protocol Bot developed by imsesaok.\nhttps://github.com/qtwyeuritoiy/CarbonBot2")
 ping = Command(r"!ping", "!ping", "Test the connection between the user and the bot.", canned = "Pong!")
 
 dice = Command(r"!dice(?: (?P<number>\d+))?", "!dice <number>", "Roll a dice.", dice)
