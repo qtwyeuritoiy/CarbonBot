@@ -43,7 +43,7 @@ class IRCAdapter(Adapter):
             message = line.strip(" ")
             self.raw_send("PRIVMSG " + to + " :" + message + "\n")
             
-    def join(self, ch):
+    def join_channel(self, ch):
         self.raw_send("JOIN %s\n"%ch)
     
     def run(self):
@@ -61,8 +61,9 @@ class IRCAdapter(Adapter):
         self.logger.info("logging in...")
 
         while True:
-            msg = self.sock.recv(512).decode(self.codec).strip("\r\n")
-            self.logger.info(msg)
+            msg = self.sock.recv(512).decode(self.codec).strip()
+            if msg is not "":
+                self.logger.info(msg)
             if "MODE" in msg or "MOTD" in msg:
                 break
             
@@ -70,14 +71,15 @@ class IRCAdapter(Adapter):
                 self.ping(msg)
             
         for ch in self.channels:
-            self.join(ch)
+            self.join_channel(ch)
         
         self.logger.info("Logged in succesfully!")
         
         while True:
             try:
-                msg = self.sock.recv(2048).decode(self.codec).strip("\r\n")
-                self.logger.info(msg)
+                msg = self.sock.recv(2048).decode(self.codec).strip()
+                if msg is not "":
+                    self.logger.info(msg)
                 if "PING :" in msg:
                     self.ping(msg)
                 elif "PRIVMSG" in msg:
