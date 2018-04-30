@@ -1,4 +1,4 @@
-import logging, re, socket, ssl, threading, time
+import logging, os, re, socket, ssl, threading, time
 import carbon2_commands
 from datetime import datetime
 
@@ -151,7 +151,7 @@ class Carbon:
             adapter.finalise()
 
 telegram = TelegramAdapter(os.environ.get('TELEGRAM_BOT_TOKEN'), os.environ.get('TELEGRAM_BOT_OWNER'))
-freenode = IRCAdapter(os.environ.get('IRC_SERVER_ADDRESS'], int(os.environ.get('IRC_SERVER_PORT')),
+freenode = IRCAdapter(os.environ.get('IRC_SERVER_ADDRESS'), int(os.environ.get('IRC_SERVER_PORT')),
     False if os.environ.get('IRC_SERVER_IS_SSL') is "0" else True, os.environ.get('IRC_CHANNELS').split(","),
     os.environ.get('IRC_OWNER'), nick = os.environ.get('IRC_NICK'))
 
