@@ -1,4 +1,4 @@
-import logging, os, re, socket, ssl, threading, time
+import base64, logging, os, re, socket, ssl, threading, time
 import carbon2_commands
 from datetime import datetime
 
@@ -10,15 +10,16 @@ class Adapter(threading.Thread):
         pass
 
 class IRCAdapter(Adapter):
-    def __init__(self, server, port, is_ssl, channels, owner, nick="Carbon", codec="UTF-8", custom_commands=None):
+    def __init__(self, server, port, is_ssl, channels, owner, nick="Carbon", codec="UTF-8", is_sasl=False, password=None):
         self.server = server
         self.port = port
         self.is_ssl = is_ssl
+        self.is_sasl = is_sasl
         self.nick = nick
         self.channels = channels
         self.owner = owner
         self.codec = codec
-        self.custom_commands = custom_commands
+        self.password = password
         
         threading.Thread.__init__(self)
         self.logger = logging.getLogger("IRCAdapter")
@@ -56,12 +57,12 @@ class IRCAdapter(Adapter):
         else:
             self.sock = raw_socket
         
+        if self.is_sasl:
+            self.raw_send("CAP LS\n")
+        
         self.raw_send("USER {0} {0} {0} :Carbon, IRC bot by imsesaok\n".format(self.nick))
         self.raw_send("NICK %s\n" % self.nick)
         
-        if self.custom_commands is not None:
-            for command in self.custom_commands:
-                self.raw_send(command+"\n")
 
         self.logger.info("logging in...")
 
@@ -72,8 +73,25 @@ class IRCAdapter(Adapter):
             if "MODE" in msg or "MOTD" in msg:
                 break
             
-            if "PING :" in msg:
+            elif "PING :" in msg:
                 self.ping(msg)
+            
+            elif "CAP" in msg:
+                if "LS" in msg:
+                    if "sasl" in msg.lower():
+                        self.raw_send("CAP REQ :sasl\n")
+                    else:
+                        self.raw_send("CAP END\n")
+                elif "ACK" in msg:
+                    self.raw_send("AUTHENTICATE PLAIN\n")
+            
+            elif "AUTHENTICATE" in msg:
+                auth = ('{sasl_username}\0'
+                '{sasl_username}\0'
+                '{sasl_password}').format(sasl_username=self.nick, sasl_password=self.password)
+                auth = base64.encodestring(auth.encode(self.codec))
+                auth = auth.decode(self.codec).rstrip('\n')
+                self.raw_send("AUTHENTICATE " + auth +"\n")
             
         for ch in self.channels:
             self.join_channel(ch)
@@ -93,6 +111,24 @@ class IRCAdapter(Adapter):
                     message = msg.split(":", 2)[2]
                     metadata = {"from_user": user, "from_group": ch, "when": datetime.now(), "_id": self._id, }
                     self.execute(message, metadata)
+                
+                elif "CAP" in msg:
+                    if "LS" in msg:
+                        if "sasl" in msg.lower():
+                            self.raw_send("CAP REQ :sasl\n")
+                        else:
+                            self.raw_send("CAP END\n")
+                    elif "ACK" in msg:
+                        self.raw_send("AUTHENTICATE PLAIN\n")
+                
+                elif "AUTHENTICATE" in msg:
+                    auth = ('{sasl_username}\0'
+                    '{sasl_username}\0'
+                    '{sasl_password}').format(sasl_username=self.nick, sasl_password=self.password)
+                    auth = base64.encodestring(auth.encode(self.codec))
+                    auth = auth.decode(self.codec).rstrip('\n')
+                    self.raw_send("AUTHENTICATE " + auth +"\n")
+            
                     
             except Exception as e:
                 self.logger.error("Error while reading socket.", exc_info=True)
@@ -157,11 +193,11 @@ class Carbon:
         for adapter in self.adapters.values():
             adapter.finalise()
 
-#telegram = TelegramAdapter(os.environ.get('TELEGRAM_BOT_TOKEN'), os.environ.get('TELEGRAM_BOT_OWNER'))
-telegram = Adapter()
+telegram = TelegramAdapter(os.environ.get('TELEGRAM_BOT_TOKEN'), os.environ.get('TELEGRAM_BOT_OWNER'))
 freenode = IRCAdapter(os.environ.get('IRC_SERVER_ADDRESS'), int(os.environ.get('IRC_SERVER_PORT')),
     False if os.environ.get('IRC_SERVER_IS_SSL') is "0" else True, os.environ.get('IRC_CHANNELS').split(","),
-    os.environ.get('IRC_OWNER'), nick = os.environ.get('IRC_NICK'), custom_commands=os.environ.get('IRC_NICKSERV_AUTH').split("\\n"))
+    os.environ.get('IRC_OWNER'), nick = os.environ.get('IRC_NICK'), password=os.environ.get('IRC_SASL_PASSWORD'),
+    is_sasl = False if os.environ.get('IRC_SERVER_IS_SASL') is "0" else True)
 
 adapters = {"carbon_telegram_bot": telegram, "freenode_carbon_bot": freenode}
 Carbon(adapters, carbon2_commands.commands).run()
