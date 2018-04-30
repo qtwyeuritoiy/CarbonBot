@@ -10,7 +10,7 @@ class Adapter(threading.Thread):
         pass
 
 class IRCAdapter(Adapter):
-    def __init__(self, server, port, is_ssl, channels, nick="Carbon", owner="imsesaok", codec="UTF-8"):
+    def __init__(self, server, port, is_ssl, channels, owner, nick="Carbon", codec="UTF-8"):
         self.server = server
         self.port = port
         self.is_ssl = is_ssl
@@ -150,8 +150,10 @@ class Carbon:
         for adapter in self.adapters.values():
             adapter.finalise()
 
-telegram = TelegramAdapter('', "@")
-freenode = IRCAdapter('', 0, True, ["#"])
+telegram = TelegramAdapter(os.environ.get('TELEGRAM_BOT_TOKEN'), os.environ.get('TELEGRAM_BOT_OWNER'))
+freenode = IRCAdapter(os.environ.get('IRC_SERVER_ADDRESS'], int(os.environ.get('IRC_SERVER_PORT')),
+    False if os.environ.get('IRC_SERVER_IS_SSL') is "0" else True, os.environ.get('IRC_CHANNELS').split(","),
+    os.environ.get('IRC_OWNER'), nick = os.environ.get('IRC_NICK'))
 
 adapters = {"carbon_telegram_bot": telegram, "freenode_carbon_bot": freenode}
 Carbon(adapters, carbon2_commands.commands).run()

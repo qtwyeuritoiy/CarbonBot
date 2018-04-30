@@ -7,4 +7,6 @@ This project aims to work on virtually any IM platform at will.
 
 Adapters are currently developed for IRC and Telegram Bot API.
 
+This program is configured to run on Heroku.
+
 License: GPL 3.0+
