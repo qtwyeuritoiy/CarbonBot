@@ -58,10 +58,10 @@ class IRCAdapter(Adapter):
             self.sock = raw_socket
         
         if self.is_sasl:
-            self.raw_send("CAP LS\n")
+            self.raw_send("CAP REQ :sasl\n")
         
-        self.raw_send("USER {0} {0} {0} :Carbon, IRC bot by imsesaok\n".format(self.nick))
         self.raw_send("NICK %s\n" % self.nick)
+        self.raw_send("USER {0} {0} {0} :Carbon, IRC bot made by imsesaok\n".format(self.nick))
         
 
         self.logger.info("logging in...")
@@ -70,30 +70,26 @@ class IRCAdapter(Adapter):
             msg = self.sock.recv(512).decode(self.codec).strip()
             if msg is not "":
                 self.logger.info(msg)
-            if "MODE" in msg or "MOTD" in msg:
-                break if not self.is_sasl else pass
+            if "MODE %s"%self.nick in msg or "MOTD" in msg:
+                break
             
             elif "PING :" in msg:
                 self.ping(msg)
             
-            elif "CAP" in msg:
-                if "LS" in msg:
-                    if "sasl" in msg.lower():
-                        self.raw_send("CAP REQ :sasl\n")
-                    else:
-                        self.raw_send("CAP END\n")
-                elif "ACK" in msg:
+            elif "CAP" in msg and "ACK" in msg:
                     self.raw_send("AUTHENTICATE PLAIN\n")
             
             elif "AUTHENTICATE" in msg:
                 auth = ('{sasl_username}\0'
                 '{sasl_username}\0'
-                '{sasl_password}').format(sasl_username=self.nick, sasl_password=self.password)
+                '{sasl_password}').format(sasl_username=self.nick,
+                sasl_password=self.password)
                 auth = base64.encodestring(auth.encode(self.codec))
                 auth = auth.decode(self.codec).rstrip('\n')
                 self.raw_send("AUTHENTICATE " + auth +"\n")
-            elif "903" in msg and self.is_sasl:
-                break
+            
+            elif "903" in msg:
+                self.raw_send("CAP END\n")
             
         for ch in self.channels:
             self.join_channel(ch)
@@ -177,7 +173,7 @@ class Carbon:
         for adapter in self.adapters.values():
             adapter.finalise()
 
-telegram = TelegramAdapter(os.environ.get('TELEGRAM_BOT_TOKEN'), os.environ.get('TELEGRAM_BOT_OWNER'))
+telegram = Adapter()#TelegramAdapter(os.environ.get('TELEGRAM_BOT_TOKEN'), os.environ.get('TELEGRAM_BOT_OWNER'))
 freenode = IRCAdapter(os.environ.get('IRC_SERVER_ADDRESS'), int(os.environ.get('IRC_SERVER_PORT')),
     False if os.environ.get('IRC_SERVER_IS_SSL') is "0" else True, os.environ.get('IRC_CHANNELS').split(","),
     os.environ.get('IRC_OWNER'), nick = os.environ.get('IRC_NICK'), password=os.environ.get('IRC_SASL_PASSWORD'),
