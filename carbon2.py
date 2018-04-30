@@ -10,7 +10,7 @@ class Adapter(threading.Thread):
         pass
 
 class IRCAdapter(Adapter):
-    def __init__(self, server, port, is_ssl, channels, owner, nick="Carbon", codec="UTF-8"):
+    def __init__(self, server, port, is_ssl, channels, owner, nick="Carbon", codec="UTF-8", custom_commands=None):
         self.server = server
         self.port = port
         self.is_ssl = is_ssl
@@ -18,6 +18,7 @@ class IRCAdapter(Adapter):
         self.channels = channels
         self.owner = owner
         self.codec = codec
+        self.custom_commands = custom_commands
         
         threading.Thread.__init__(self)
         self.logger = logging.getLogger("IRCAdapter")
@@ -57,6 +58,10 @@ class IRCAdapter(Adapter):
         
         self.raw_send("USER {0} {0} {0} :Carbon, IRC bot by imsesaok\n".format(self.nick))
         self.raw_send("NICK %s\n" % self.nick)
+        
+        if self.custom_commands is not None:
+            for command in self.custom_commands:
+                self.raw_send(command+"\n")
 
         self.logger.info("logging in...")
 
@@ -152,10 +157,11 @@ class Carbon:
         for adapter in self.adapters.values():
             adapter.finalise()
 
-telegram = TelegramAdapter(os.environ.get('TELEGRAM_BOT_TOKEN'), os.environ.get('TELEGRAM_BOT_OWNER'))
+#telegram = TelegramAdapter(os.environ.get('TELEGRAM_BOT_TOKEN'), os.environ.get('TELEGRAM_BOT_OWNER'))
+telegram = Adapter()
 freenode = IRCAdapter(os.environ.get('IRC_SERVER_ADDRESS'), int(os.environ.get('IRC_SERVER_PORT')),
     False if os.environ.get('IRC_SERVER_IS_SSL') is "0" else True, os.environ.get('IRC_CHANNELS').split(","),
-    os.environ.get('IRC_OWNER'), nick = os.environ.get('IRC_NICK'))
+    os.environ.get('IRC_OWNER'), nick = os.environ.get('IRC_NICK'), custom_commands=os.environ.get('IRC_NICKSERV_AUTH').split("\\n"))
 
 adapters = {"carbon_telegram_bot": telegram, "freenode_carbon_bot": freenode}
 Carbon(adapters, carbon2_commands.commands).run()

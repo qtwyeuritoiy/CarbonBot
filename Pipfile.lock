@@ -1,7 +1,7 @@
 {
     "_meta": {
         "hash": {
-            "sha256": "fb76d20e572d5ad9e22ae040520f85c4fa44a7444274c07ac6829375857b2a23"
+            "sha256": "c60c2c8ac2f34d7863e97aec0969a964c80d86fcb1af021fe934779dc3d51906"
         },
         "pipfile-spec": 6,
         "requires": {
@@ -31,11 +31,25 @@
             ],
             "version": "==2018.4.16"
         },
+        "docopt": {
+            "hashes": [
+                "sha256:49b3a825280bd66b3aa83585ef59c4a8c82f2c8a522dbe754a8bc8d08c85c491"
+            ],
+            "version": "==0.6.2"
+        },
         "future": {
             "hashes": [
                 "sha256:e39ced1ab767b5936646cedba8bcce582398233d6a627067d4c6a454c90cfedb"
             ],
             "version": "==0.16.0"
+        },
+        "irc3": {
+            "hashes": [
+                "sha256:7cbbd1fa6dd942014f354b20c0fa3b99fd216259b71640c145c73581cb573eeb",
+                "sha256:8cd7152dab0109f219818c71d3a0abb3d41da9302d371b8ebd42591cfde21a65"
+            ],
+            "index": "pypi",
+            "version": "==1.0.2"
         },
         "python-telegram-bot": {
             "hashes": [
@@ -44,6 +58,13 @@
             ],
             "index": "pypi",
             "version": "==10.0.2"
+        },
+        "venusian": {
+            "hashes": [
+                "sha256:757162c5f907e18571b6ab41b7673e5bf18cc8715abf8164292eaef4f1610668",
+                "sha256:9902e492c71a89a241a18b2f9950bea7e41d025cc8f3af1ea8d8201346f8577d"
+            ],
+            "version": "==1.1.0"
         }
     },
     "develop": {}

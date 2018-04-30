@@ -6,6 +6,7 @@ name = "pypi"
 [packages]
 python-telegram-bot = "*"
 boto = "*"
+"irc3" = "*"
 
 [dev-packages]
 
