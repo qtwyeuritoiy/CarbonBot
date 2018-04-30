@@ -71,7 +71,7 @@ class IRCAdapter(Adapter):
             if msg is not "":
                 self.logger.info(msg)
             if "MODE" in msg or "MOTD" in msg:
-                break
+                break if not self.is_sasl else pass
             
             elif "PING :" in msg:
                 self.ping(msg)
@@ -92,6 +92,8 @@ class IRCAdapter(Adapter):
                 auth = base64.encodestring(auth.encode(self.codec))
                 auth = auth.decode(self.codec).rstrip('\n')
                 self.raw_send("AUTHENTICATE " + auth +"\n")
+            elif "903" in msg and self.is_sasl:
+                break
             
         for ch in self.channels:
             self.join_channel(ch)
@@ -111,25 +113,7 @@ class IRCAdapter(Adapter):
                     message = msg.split(":", 2)[2]
                     metadata = {"from_user": user, "from_group": ch, "when": datetime.now(), "_id": self._id, }
                     self.execute(message, metadata)
-                
-                elif "CAP" in msg:
-                    if "LS" in msg:
-                        if "sasl" in msg.lower():
-                            self.raw_send("CAP REQ :sasl\n")
-                        else:
-                            self.raw_send("CAP END\n")
-                    elif "ACK" in msg:
-                        self.raw_send("AUTHENTICATE PLAIN\n")
-                
-                elif "AUTHENTICATE" in msg:
-                    auth = ('{sasl_username}\0'
-                    '{sasl_username}\0'
-                    '{sasl_password}').format(sasl_username=self.nick, sasl_password=self.password)
-                    auth = base64.encodestring(auth.encode(self.codec))
-                    auth = auth.decode(self.codec).rstrip('\n')
-                    self.raw_send("AUTHENTICATE " + auth +"\n")
-            
-                    
+        
             except Exception as e:
                 self.logger.error("Error while reading socket.", exc_info=True)
 
