@@ -1,1 +1,1 @@
-bot: python carbonbot2.py
+bot: python carbon2.py

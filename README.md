@@ -9,4 +9,4 @@ Adapters are currently developed for IRC and Telegram Bot API.
 
 This program is configured to run on Heroku.
 
-License: GPL 3.0+
+License: AGPL 3.0+
