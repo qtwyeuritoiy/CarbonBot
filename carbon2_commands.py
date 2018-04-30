@@ -22,7 +22,7 @@ class Command:
         except:
             traceback.print_exc()
             e = sys.exc_info()[0]
-            bot.send("Oops! Something Went Horribly Wrong! (%s)" % e, metadata['from_group'])
+            bot.send("Oops! Something Went Horribly Wrong! (%s)" % e, metadata['from_group'], metadata['_id'])
 
 def print_help(match, metadata, bot):
     linecount = 4
@@ -81,7 +81,7 @@ def add_echo_command(match, metadata, bot):
     echo_reply = Command(condition, "!if %s"%condition, "!echo %s"%reply,
         lambda message, metadata_lambda, bot: [bot.send(reply, metadata['from_group'], metadata['_id'])
             if metadata_lambda['from_group'] == metadata['from_group'] else None],
-        criteria = lambda message, metadata: False)
+        criteria = lambda message, metadata, bot: False)
     for command in bot.commands:
         if command.title == "!if " + condition:
             bot.commands.remove(command)
