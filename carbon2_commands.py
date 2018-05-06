@@ -100,7 +100,7 @@ def add_echo_command(match, metadata, bot):
             bot.commands.append(echo_reply)
             bot.send("Rule Already Exists. Overridden.", metadata['from_group'], metadata['_id'])
             return
-        elif re.search("^{ident}{command}$".format(ident=metadata["ident"], command=command.regex), condition) and not command.raw_match:
+        elif re.search("^{command}$".format(command=command.regex.format(ident=metadata["ident"])), condition) and not command.raw_match:
             bot.send("Rule Not Accepted: You cannot override existing commands.", metadata['from_group'], metadata['_id'])
             return
 
