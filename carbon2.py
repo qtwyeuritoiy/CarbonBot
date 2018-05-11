@@ -1,3 +1,5 @@
+#!/usr/bin/env python3
+
 import base64, logging, os, re, socket, ssl, threading, time
 import carbon2_commands
 from datetime import datetime
@@ -152,6 +154,33 @@ class TelegramAdapter(Adapter):
     def send(self, message, to):
         self.bot.send_message(chat_id=to, text=message)
 
+class ConsoleAdapter(Adapter):
+    def __init__(self, nick="Carbon"):
+        super(self.__class__, self).__init__()
+        self.nick = nick
+
+        threading.Thread.__init__(self)
+
+    def run(self):
+        try:
+            while True:
+                print('>', end=' ')
+                message = input()
+                metadata = {"from_user": "console user", "from_group": "console", "when": "now",
+                            "_id": self._id, "ident": self.identifier, "type": self.__class__.__name__,
+                            "mentioned": self.nick in message, "is_mod": True, }
+                self.callback(message, metadata)
+        except EOFError:
+            print("^D\nGoodbye.")
+            pass
+
+    def register_callback(self, func, _id):
+        self.callback = func
+        self._id = _id
+
+    def send(self, message, to):
+        print('< {msg}'.format(to=to, msg=message))
+
 class Carbon:
     def __init__(self, adapters, commands = []):
         self.commands = commands
@@ -181,19 +210,26 @@ class Carbon:
         for adapter in self.adapters.values():
             adapter.finalise()
 
-telegram = TelegramAdapter(os.environ.get('TELEGRAM_BOT_TOKEN'), os.environ.get('TELEGRAM_BOT_OWNER'))
-freenode = IRCAdapter(os.environ.get('IRC_SERVER_ADDRESS'), int(os.environ.get('IRC_SERVER_PORT')),
-    False if os.environ.get('IRC_SERVER_IS_SSL') is "0" else True, os.environ.get('IRC_CHANNELS').split(","),
-    os.environ.get('IRC_OWNER'), nick = os.environ.get('IRC_NICK'), password=os.environ.get('IRC_SASL_PASSWORD'),
-    is_sasl = False if os.environ.get('IRC_SERVER_IS_SASL') is "0" else True)
+if __name__ == "__main__":
+    if os.environ.get('CARBON_CONSOLE'):
+        adapters = {"console": ConsoleAdapter()}
+        Carbon(adapters, carbon2_commands.commands).run()
 
-adapters = {"carbon_telegram_bot": telegram, "freenode_carbon_bot": freenode}
-Carbon(adapters, carbon2_commands.commands).run()
+    else:
+        telegram = TelegramAdapter(os.environ.get('TELEGRAM_BOT_TOKEN'), os.environ.get('TELEGRAM_BOT_OWNER'))
+        freenode = IRCAdapter(os.environ.get('IRC_SERVER_ADDRESS'), int(os.environ.get('IRC_SERVER_PORT')),
+            False if os.environ.get('IRC_SERVER_IS_SSL') is "0" else True, os.environ.get('IRC_CHANNELS').split(","),
+            os.environ.get('IRC_OWNER'), nick = os.environ.get('IRC_NICK'), password=os.environ.get('IRC_SASL_PASSWORD'),
+            is_sasl = False if os.environ.get('IRC_SERVER_IS_SASL') is "0" else True)
+        adapters = {"carbon_telegram_bot": telegram, "freenode_carbon_bot": freenode}
 
-#Logging code.
-#Will clean up later.
-logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
-handler = logging.FileHandler('carbon.log')
-handler.setLevel(logging.INFO)
-formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
-handler.setFormatter(formatter)
+        Carbon(adapters, carbon2_commands.commands).run()
+
+
+        #Logging code.
+        #Will clean up later.
+        logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+        handler = logging.FileHandler('carbon.log')
+        handler.setLevel(logging.INFO)
+        formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+        handler.setFormatter(formatter)
