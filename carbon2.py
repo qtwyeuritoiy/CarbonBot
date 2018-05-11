@@ -112,7 +112,7 @@ class IRCAdapter(Adapter):
                     message = msg.split(":", 2)[2]
                     metadata = {"from_user": user, "from_group": ch, "when": datetime.now(),
                             "_id": self._id, "ident": self.identifier, "type": self.__class__.__name__,
-                            "mentioned": self.nick in message, }
+                            "mentioned": self.nick in message, "is_mod": user == self.owner, } #FIXME: Check for other admins in the channel.
                     self.execute(message, metadata)
 
             except Exception as e:
@@ -146,7 +146,7 @@ class TelegramAdapter(Adapter):
         when = update.message.date
         metadata = {"from_user": from_user, "from_group": from_group, "when": when,
                 "_id": self._id, "ident": self.identifier, "type": self.__class__.__name__,
-                "mentioned": "@"+self.bot_id in message }
+                "mentioned": "@"+self.bot_id in message, "is_mod": from_user == self.admin_id, } #FIXME: Check for other admins in the channel.
         self.callback(message, metadata)
 
     def send(self, message, to):
@@ -155,7 +155,8 @@ class TelegramAdapter(Adapter):
 class Carbon:
     def __init__(self, adapters, commands = []):
         self.commands = commands
-        self.adapters= adapters
+        self.adapters = adapters
+        self.metadata = dict()
         for _id in self.adapters:
             self.adapters[_id].register_callback(self.process, _id)
 
@@ -171,7 +172,7 @@ class Carbon:
                 regex = command.regex.format(ident=metadata["ident"])
                 match = re.search("^{}$".format(regex), message)
             if match is not None:
-                command.on_exec(match, metadata, self)
+                command.on_exec(match, {**metadata, **self.metadata}, self)
 
     def send(self, message, to, _id):
         self.adapters[_id].send(message, to)
