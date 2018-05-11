@@ -112,7 +112,8 @@ def add_echo_command(match, metadata, bot):
 
     conditional_cmd = Command(condition, condition, command_str, lambda match, metadata, bot: nested_eval(match, metadata, bot, command_str), flags=["echo"],
         display_condition = lambda message, metadata, bot: False,
-        exec_condition = lambda message, metadata, bot: metadata['from_group'] == group and metadata["_id"] == adapter_id and bot.metadata.get("regexif", True))
+        exec_condition = lambda message, metadata, bot:
+            metadata['from_group'] == group and metadata["_id"] == adapter_id and bot.metadata.get("regexif", True) and not metadata.get("nested", False))
 
     for command in bot.commands:
         if command.exec_condition(match, metadata, bot):
