@@ -35,8 +35,8 @@ class IRCAdapter(Adapter):
         logging.basicConfig(level=logging.DEBUG)
 
     def ping(self, msg):
-        pong = msg.strip("PING :")
-        self.raw_send("PONG :%s\n" %pong)
+        pong = msg.lstrip("PING :")
+        self.raw_send("PONG :{}\n".format(pong))
 
     def register_callback(self, func, _id):
         self.execute = func
@@ -44,7 +44,7 @@ class IRCAdapter(Adapter):
 
     def raw_send(self, message):
         self.sock.send(message.encode(self.codec))
-        self.logger.info("Sent: %s" %message)
+        self.logger.info("Sent: {}".format(message))
 
     def send(self, message, to):
         send_to = to.strip()
@@ -59,6 +59,30 @@ class IRCAdapter(Adapter):
 
     def join_channel(self, ch):
         self.raw_send("JOIN %s\n"%ch)
+
+    def handle_message(self, chan, user, message):
+        # Check if the message was sent through a bridging bot
+        # First we check the sender's nick
+        m_user = re.fullmatch(r'[^a-zA-Z]+|apiaceae', user)
+        # Then we check the message. Also support color codes, sent e.g. by the Telegram bridging bot
+        # Those colored messages look like this:   <05imsesaok>: SiliconBot: dice
+        # Non-colored messages may look like this: <imsesaok> : SiliconBot: dice
+        # The regex liberally allows those cases.
+        m_message = re.fullmatch(r'<(?:\x03[^\x02]*\x02*)?([^>\x03]+)\x03?> *: (.+)', message)
+        if m_user and m_message:
+            # Move information so that we think this message came from that user
+            # Append [proxy] to avoid impersonation
+            proxy_user = user
+            user       = "{}[{}]".format(m_message[1], proxy_user)
+            message    = m_message[2]
+
+        self.logger.info("Received message in ``{}'' from ``{}'': ``{}''".format(chan, user, message))
+
+        metadata = {"from_user": user, "from_group": chan, "when": datetime.now(),
+                "_id": self._id, "ident": self.identifier, "type": self.__class__.__name__,
+                "mentioned": self.nick in message, "is_mod": user == self.owner, #FIXME: Check for other admins in the channel.
+                "message_id": user, }
+        self.execute(message, metadata)
 
     def run(self):
         raw_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -111,28 +135,18 @@ class IRCAdapter(Adapter):
         while True:
             try:
                 msg = self.sock.recv(2048).decode(self.codec).strip()
-                if msg is not "":
-                    self.logger.info(msg)
-                if "PING :" in msg:
+                if not msg:
+                    continue
+
+                self.logger.info(msg)
+
+                if msg.startswith("PING :"):
                     self.ping(msg)
-                elif "PRIVMSG" in msg:
-                    ch = msg.split("PRIVMSG")[-1].split(" :")[0]
-                    user = msg.split("!")[0].split(":", 1)[1]
-                    message = msg.split(":", 2)[2]
+                    continue
 
-                    m_user = re.fullmatch(r'[^a-zA-Z]+', user)
-                    m_message = re.fullmatch(r'<([^>]+)>: (.+)', message)
-                    if m_user and m_message:
-                        proxy_user = user
-                        user       = m_message[0]
-                        message    = m_message[1]
-                        print("Message received from {user} through {proxy_user}".format(user=user, proxy_user=proxy_user))
-
-                    metadata = {"from_user": user, "from_group": ch, "when": datetime.now(),
-                            "_id": self._id, "ident": self.identifier, "type": self.__class__.__name__,
-                            "mentioned": self.nick in message, "is_mod": user == self.owner, #FIXME: Check for other admins in the channel.
-                            "message_id": user, }
-                    self.execute(message, metadata)
+                m = re.fullmatch(r':(?P<nick>[^\s]+)![^\s]+@[^\s]+ PRIVMSG (?P<chan>[^\s]+) :(?P<msg>.*)', msg)
+                if m:
+                    self.handle_message(m["chan"], m["nick"], m["msg"])
 
             except Exception as e:
                 self.logger.error("Error while reading socket.", exc_info=True)
@@ -188,7 +202,7 @@ class ConsoleAdapter(Adapter):
             while True:
                 print('>', end=' ')
                 message = input()
-                metadata = {"from_user": "console user", "from_group": "console", "when": "now",
+                metadata = {"from_user": "console user", "from_group": "console", "when": datetime.now(),
                             "_id": self._id, "ident": self.identifier, "type": self.__class__.__name__,
                             "mentioned": self.nick in message, "is_mod": True, "message_id": message, }
                 self.callback(message, metadata)
