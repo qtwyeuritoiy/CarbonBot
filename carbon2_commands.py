@@ -7,11 +7,11 @@ about = CannedResponseCommand(r"{ident}about", "about", "Show information about 
     canned = "Carbon 2.0 alpha\nA Multi-Protocol Bot developed by imsesaok.\nhttps://github.com/qtwyeuritoiy/CarbonBot2")
 ping = CannedResponseCommand(r"{ident}ping", "ping", "Test the connection between the user and the bot.", canned = "Pong!")
 echo = Command(r"{ident}echo(?: (?P<message>.+))?", "echo <message>", "Echo message.",
-    lambda match, metadata, bot: bot.send(match['message'], metadata['from_group'], metadata['_id']))
+    lambda match, metadata, bot: bot.reply(match['message'], metadata["message_id"], metadata['from_group'], metadata['_id']) if match['message'] else None)
 
 from datetime import datetime, date, timedelta
 uptime = Command(r"{ident}uptime", "uptime", "Show how long the bot has been operating.",
-    lambda match, metadata, bot: bot.send(str(timedelta(seconds=time.time() - start_time)), metadata['from_group'], metadata['_id']))
+    lambda match, metadata, bot: bot.reply(str(timedelta(seconds=time.time() - start_time)), metadata["message_id"], metadata['from_group'], metadata['_id']))
 start_time = time.time()
 
 def print_help(match, metadata, bot):
@@ -25,7 +25,7 @@ def print_help(match, metadata, bot):
     try:
         index = int(match['page'].strip()) - 1
     except ValueError:
-        bot.send("Invalid argument: expecting integer.", metadata['from_group'], metadata['_id'])
+        bot.reply("Invalid argument: expecting number.", metadata["message_id"], metadata['from_group'], metadata['_id'])
         return
     except AttributeError:
         index = 0
@@ -37,11 +37,12 @@ def print_help(match, metadata, bot):
     if command_count < end:
         end = command_count
         if end <= start:
-            bot.send("Invalid number: use number below " + str(maximum) + ".",
+            bot.reply("Invalid number: use number below " + str(maximum) + ".", metadata["message_id"],
                 metadata['from_group'], metadata['_id'])
             return
 
-    bot.send("Usage: <identifier><command>\nIdentifier setting for the current adapter: {}\n".format(metadata["ident"]), metadata['from_group'], metadata['_id'])
+    bot.reply("Usage: <identifier><command>\nIdentifier setting for the current adapter: {}\n".format(metadata["ident"]),
+        metadata["message_id"], metadata['from_group'], metadata['_id'])
 
     message = "Commands: " + str(index + 1) + " out of " + str(maximum)
     for i in range(start, end):
@@ -90,7 +91,8 @@ def dice_fun(match, metadata, bot):
     try:
         dice_expression = dice.parse_expression(spec)[0]
     except dice.exceptions.DiceBaseException as e:
-        bot.send("Unsupported dice format:\n{}".format(e.pretty_print()), metadata['from_group'], metadata['_id'])
+        bot.reply("Unsupported dice format:\n{}".format(e.pretty_print()), metadata["message_id"], metadata['from_group'], metadata['_id'])
+
         return
 
     # Roll the dice
@@ -123,11 +125,10 @@ def dice_fun(match, metadata, bot):
             formatted = "Unable to recognize dice result"
             print("Unable to recognize dice result: {}".format(dice_result))
 
-
-    bot.send(formatted, metadata['from_group'], metadata['_id'])
+    bot.reply(formatted, metadata["message_id"], metadata['from_group'], metadata['_id'])
 
     # dice_expression.sides is broken: it gives 1 for fudge dice (-1 through 1), who clearly have 3 sides
-    if dice_expression.min_value == 1 and dice_expression.max_value == 1:
+    if dice_expression.min_value == dice_expression.max_value:
         bot.send("(seriously tho?)", metadata['from_group'], metadata['_id'])
 
 dice_cmd = Command(r"{ident}dice(?: (?P<dicespec>.+))?", "dice (<dice specification>)", "Roll a dice.", dice_fun)
@@ -137,8 +138,14 @@ def nested_eval(match, metadata, bot, command):
     bot.process(command, metadata)
 
 def add_echo_command(match, metadata, bot):
-    condition = str(match['condition']).strip()
-    command_str = str(match['command']).strip()
+    try:
+        if not match['condition'] or not match['command']: return
+
+        condition = str(match['condition']).strip()
+        command_str = str(match['command']).strip()
+    except AttributeError:
+        return
+
     group = metadata['from_group']
     adapter_id = metadata["_id"]
 
@@ -150,34 +157,59 @@ def add_echo_command(match, metadata, bot):
     for command in bot.commands:
         if command.exec_condition(match, metadata, bot):
             if condition == command.regex and "echo" in command.flags:
-                bot.commands.remove(command)
-                bot.commands.append(conditional_cmd)
-                bot.send("Rule Already Exists. Overridden.", metadata['from_group'], metadata['_id'])
+                bot.reply("Rule Already Exists: '{}' -> {}\nDelete the command before writing a new one.".format(command.regex, command.description),
+                        metadata["message_id"], metadata['from_group'], metadata['_id'])
                 return
             elif re.search("^{command}$".format(command=command.regex.format(ident=metadata["ident"])), condition) and not command.raw_match:
-                bot.send("Rule Not Accepted: You cannot override existing commands.", metadata['from_group'], metadata['_id'])
+                bot.reply("Rule Not Accepted: You cannot override existing commands.", metadata["message_id"], metadata['from_group'], metadata['_id'])
                 return
 
     bot.commands.append(conditional_cmd)
-    bot.send("Rule successfully created: '{}' -> {}".format(conditional_cmd.regex, conditional_cmd.description), metadata['from_group'], metadata['_id'])
+    bot.reply("Rule successfully created: '{}' -> {}".format(conditional_cmd.regex, conditional_cmd.description), metadata["message_id"],
+            metadata['from_group'], metadata['_id'])
 
 add_echo = Command(r"(?P<ident>{ident})if(?: (?P<condition>.+?) (?P<command>(?P=ident).+?))?", "if <condition> <command>",
     "Excecute certain command when certain message is sent.", add_echo_command, exec_condition = lambda message, metadata, bot: metadata.get("nested", None) is None)
 
 def remove_echo_command(match, metadata, bot):
-    condition = match["condition"]
+    try:
+        condition = match["condition"]
+    except AttributeError:
+        return
 
     for command in bot.commands:
         if "echo" in command.flags and command.exec_condition(match, metadata, bot):
-            if condition == command.regex or re.search("^{command}$".format(command=command.regex.format(ident=metadata["ident"])), condition):
+            if condition == command.regex:
                 bot.commands.remove(command)
-                bot.send("Rule successfully deleted.", metadata['from_group'], metadata['_id'])
+                bot.reply("Rule successfully deleted.", metadata["message_id"], metadata['from_group'], metadata['_id'])
                 return
 
-    bot.send("Rule does not exist.", metadata['from_group'], metadata['_id'])
+    bot.reply("Rule does not exist.", metadata["message_id"], metadata['from_group'], metadata['_id'])
 
 remove_echo = Command(r"{ident}removeif(?: (?P<condition>.+?))?", "removeif <message>",
-    "Remove the echo rule.", remove_echo_command, exec_condition = lambda message, metadata, bot:
+    "Remove the echo ruleby providing regex.", remove_echo_command, exec_condition = lambda message, metadata, bot:
+        metadata.get("nested", None) is None)
+
+def remove_echo_match(match, metadata, bot):
+    try:
+        condition = match["condition"]
+    except AttributeError:
+        return
+
+    del_count = 0
+    for command in bot.commands:
+        if "echo" in command.flags and command.exec_condition(match, metadata, bot):
+            if re.search("^{command}$".format(command=command.regex.format(ident=metadata["ident"])), condition):
+                bot.commands.remove(command)
+                del_count += 1
+
+    if del_count > 0:
+        bot.reply("%d rule(s) has been successfully deleted."%del_count, metadata["message_id"], metadata['from_group'], metadata['_id'])
+    else:
+        bot.reply("No matching rules exist.", metadata["message_id"], metadata['from_group'], metadata['_id'])
+
+remove_match = Command(r"{ident}removematch(?: (?P<condition>.+?))?", "removematch <message>",
+    "Remove the echo rule by matching regex.", remove_echo_match, exec_condition = lambda message, metadata, bot:
         metadata.get("nested", None) is None)
 
 def list_rules(match, metadata, bot):
@@ -189,9 +221,9 @@ def list_rules(match, metadata, bot):
     if condition:
         for command in bot.commands:
             if condition == command.regex and "echo" in command.flags and command.exec_condition(match, metadata, bot):
-                bot.send("'{}' -> {}".format(command.title, command.description), metadata['from_group'], metadata['_id'])
+                bot.reply("'{}' -> {}".format(command.title, command.description), metadata["message_id"], metadata['from_group'], metadata['_id'])
                 return
-        bot.send("Rule with condition '{}' Not Found.".format(condition), metadata['from_group'], metadata['_id'])
+        bot.reply("Rule with condition '{}' Not Found.".format(condition), metadata["message_id"], metadata['from_group'], metadata['_id'])
     else:
         rules = ""
         for command in bot.commands:
@@ -199,9 +231,9 @@ def list_rules(match, metadata, bot):
                 rules += "'{}' -> {}\n".format(command.title, command.description)
         rules = rules.strip()
         if rules:
-            bot.send(rules, metadata['from_group'], metadata['_id'])
+            bot.reply(rules, metadata["message_id"], metadata['from_group'], metadata['_id'])
         else:
-            bot.send("No Rules Defined.", metadata['from_group'], metadata['_id'])
+            bot.reply("No Rules Defined.", metadata["message_id"], metadata['from_group'], metadata['_id'])
 
 list_echo = Command(r"{ident}rule(?: (?P<condition>.+))?", "rule <condition>",
     "Display All Rules or (If Condition Is Given) Display Rule Containing Given Condition.", list_rules)
@@ -212,12 +244,11 @@ def switch_regexif(match, metadata, bot):
             bot.metadata["regexif"] = True
         elif str(match["bool"]) in "false":
             bot.metadata["regexif"] = False
-        bot.send("regexif = %s"%bot.metadata["regexif"], metadata['from_group'], metadata['_id'])
+        bot.reply("regexif = %s"%bot.metadata["regexif"], metadata["message_id"], metadata['from_group'], metadata['_id'])
     except AttributeError:
         pass
     except KeyError:
-        bot.send("regexif = undefined", metadata['from_group'], metadata['_id'])
-
+        bot.reply("regexif = undefined", metadata["message_id"], metadata['from_group'], metadata['_id'])
 
 regex_switch = Command(r"#regexif(?: (?P<bool>true|false))?", "", "", switch_regexif,
     display_condition = lambda message, metadata, bot: False,

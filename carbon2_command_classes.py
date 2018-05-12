@@ -21,7 +21,7 @@ class Command:
         except:
             traceback.print_exc()
             e = sys.exc_info()[0]
-            bot.send("Oops! Something Went Horribly Wrong! (%s)" % e,
+            bot.send("Oops! Something Went Horribly Wrong! (%s)" % e.pretty_print(),
                     metadata['from_group'], metadata['_id'])
 
 class CannedResponseCommand(Command):
