@@ -53,10 +53,12 @@ def print_help(match, metadata, bot):
 help = Command(r"{ident}help(?: ?(?P<page>\d+))?", "help <page>", "Show this text.", print_help)
 
 
-DIE_SIDES = ("⚀", "⚁", "⚂", "⚃", "⚄", "⚅")
-
 def format_six_faced_die(value):
-    return DIE_SIDES[value-1]
+    return ("⚀", "⚁", "⚂", "⚃", "⚄", "⚅")[value-1]
+
+
+def format_fudge_die(value):
+    return ("⊟", "⊡", "⊞")[value+1]
 
 
 def format_other_die(value):
@@ -71,10 +73,11 @@ def dice_fun(match, metadata, bot):
 
     if "," in spec:
         spec = spec.split(",")
+
+        match = match.groupdict()
         for x in spec:
-            match = groupdict(match)
             match["dicespec"] = x
-            dice(match, metadata, bot)
+            dice_fun(match, metadata, bot)
         return
 
     # Some cases we would like to handle that the dice library does not support
@@ -98,6 +101,8 @@ def dice_fun(match, metadata, bot):
         # Format 6-faced dice differently
         if dice_expression.min_value == 1 and dice_expression.max_value == 6:
             formatter = format_six_faced_die
+        elif dice_expression.min_value == -1 and dice_expression.max_value == 1:
+            formatter = format_fudge_die
         else:
             formatter = format_other_die
 
@@ -121,7 +126,8 @@ def dice_fun(match, metadata, bot):
 
     bot.send(formatted, metadata['from_group'], metadata['_id'])
 
-    if dice_expression.sides == 1:
+    # dice_expression.sides is broken: it gives 1 for fudge dice (-1 through 1), who clearly have 3 sides
+    if dice_expression.min_value == 1 and dice_expression.max_value == 1:
         bot.send("(seriously tho?)", metadata['from_group'], metadata['_id'])
 
 dice_cmd = Command(r"{ident}dice(?: (?P<dicespec>.+))?", "dice (<dice specification>)", "Roll a dice.", dice_fun)
