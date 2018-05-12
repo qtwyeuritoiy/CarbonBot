@@ -174,7 +174,7 @@ def chat_guess(match, metadata, bot):
 def chat_status(match, metadata, bot):
     game = chat_get_game(match, metadata, bot)
 
-    bot.send('{pattern} {left}/{total}'.format(pattern=" ".join(game["pattern"].upper()),
+    bot.send('{pattern}   {left}/{total}'.format(pattern=" ".join(game["pattern"].upper()),
                                                left=game["misses_left"],
                                                total=TOLERANCE
                                                ),
