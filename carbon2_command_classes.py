@@ -1,3 +1,5 @@
+import traceback
+
 class Command:
     def __init__(self, regex, title, description, on_exec, raw_match=False,
             display_condition = lambda match, metadata, bot: True,

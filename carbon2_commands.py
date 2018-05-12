@@ -1,4 +1,4 @@
-import random, re, sys, time, traceback, numbers
+import random, re, sys, time, numbers
 from carbon2_command_classes import CannedResponseCommand, Command
 import dice
 import hangman
