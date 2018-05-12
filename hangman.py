@@ -114,11 +114,8 @@ def chat_end(match, metadata, bot):
     adapter_id = metadata["_id"]
     channel = metadata["from_group"]
 
-    if adapter_id not in chat_games:
-        chat_games[adapter_id] = {}
-
-    if channel in chat_games[adapter_id]:
-        del chat_games[metadata['_id']]
+    if channel in chat_games.get(adapter_id, {}):
+        del chat_games[adapter_id][channel]
 
 
 def chat_start(match, metadata, bot):
@@ -150,7 +147,13 @@ def chat_guess(match, metadata, bot):
         chat_status(match, metadata, bot)
         return
 
-    game["pattern"], matching_word = select(game["pattern"], game["previous_letters"], guessed_letter)
+    selection = select(game["pattern"], game["previous_letters"], guessed_letter)
+    if selection is None:
+        bot.send("Sorry, something went wrong!", metadata['from_group'], metadata['_id'])
+        chat_end(match, metadata, bot)
+        return
+
+    game["pattern"], matching_word = selection
     game["previous_letters"].add(guessed_letter)
     if guessed_letter not in game["pattern"]:
         game["misses_left"] -= 1
