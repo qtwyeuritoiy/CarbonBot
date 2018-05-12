@@ -112,6 +112,15 @@ class IRCAdapter(Adapter):
                     ch = msg.split("PRIVMSG")[-1].split(" :")[0]
                     user = msg.split("!")[0].split(":", 1)[1]
                     message = msg.split(":", 2)[2]
+
+                    m_user = re.fullmatch(r'[^a-zA-Z]+', user)
+                    m_message = re.fullmatch(r'<([^>]+)>: (.+)', message)
+                    if m_user and m_message:
+                        proxy_user = user
+                        user       = m_message[0]
+                        message    = m_message[1]
+                        print("Message received from {user} through {proxy_user}".format(user=user, proxy_user=proxy_user))
+
                     metadata = {"from_user": user, "from_group": ch, "when": datetime.now(),
                             "_id": self._id, "ident": self.identifier, "type": self.__class__.__name__,
                             "mentioned": self.nick in message, "is_mod": user == self.owner, } #FIXME: Check for other admins in the channel.
