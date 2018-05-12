@@ -73,7 +73,7 @@ class IRCAdapter(Adapter):
             self.raw_send("CAP REQ :sasl\n") #SASL request has to be sent before everything else.
 
         self.raw_send("NICK %s\n" % self.nick)
-        self.raw_send("USER {0} {0} {0} :Carbon, IRC bot made by imsesaok\n".format(self.nick))
+        self.raw_send("USER {0} {0} {0} :Carbon, IRC bot made by imsesaok with contributions by M1dgard\n".format(self.nick))
 
         self.logger.info("logging in...")
 

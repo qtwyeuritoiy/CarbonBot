@@ -4,7 +4,7 @@ import dice
 import hangman
 
 about = CannedResponseCommand(r"{ident}about", "about", "Show information about this bot.",
-    canned = "Carbon 2.0 alpha\nA Multi-Protocol Bot developed by imsesaok.\nhttps://github.com/qtwyeuritoiy/CarbonBot2")
+    canned = "Carbon 2.0 alpha\nA Multi-Protocol Bot developed by imsesaok with contributions by M1dgard.\nhttps://github.com/qtwyeuritoiy/CarbonBot2")
 ping = CannedResponseCommand(r"{ident}ping", "ping", "Test the connection between the user and the bot.", canned = "Pong!")
 echo = Command(r"{ident}echo(?: (?P<message>.+))?", "echo <message>", "Echo message.",
     lambda match, metadata, bot: bot.reply(match['message'], metadata["message_id"], metadata['from_group'], metadata['_id']) if match['message'] else None)
