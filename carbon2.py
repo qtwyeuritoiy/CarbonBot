@@ -11,7 +11,10 @@ class Adapter(threading.Thread):
     def register_callback(self, func, _id):
         pass
 
-    def send_to(self, message, to):
+    def send(self, message, group):
+        pass
+
+    def reply(self, message, to, group):
         pass
 
 class IRCAdapter(Adapter):
@@ -59,15 +62,15 @@ class IRCAdapter(Adapter):
 
     def run(self):
         raw_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        raw_socket.connect((self.server, self.port))
+        raw_socket.connect((self.server, self.port)) #Create & connect socket
 
         if self.is_ssl:
-            self.sock = ssl.wrap_socket(raw_socket)
+            self.sock = ssl.wrap_socket(raw_socket) #Optionally wrap socket with SSL
         else:
             self.sock = raw_socket
 
         if self.is_sasl:
-            self.raw_send("CAP REQ :sasl\n")
+            self.raw_send("CAP REQ :sasl\n") #SASL request has to be sent before everything else.
 
         self.raw_send("NICK %s\n" % self.nick)
         self.raw_send("USER {0} {0} {0} :Carbon, IRC bot made by imsesaok\n".format(self.nick))
@@ -78,6 +81,7 @@ class IRCAdapter(Adapter):
             msg = self.sock.recv(512).decode(self.codec).strip().replace(self.nick, "")
             if msg is not "":
                 self.logger.info(msg)
+
             if "MODE %s"%self.nick in msg or "MOTD" in msg:
                 break
 
@@ -96,7 +100,7 @@ class IRCAdapter(Adapter):
                 auth = auth.decode(self.codec).rstrip('\n')
                 self.raw_send("AUTHENTICATE " + auth +"\n")
 
-            elif "903" in msg:
+            elif "903" in msg: #Auth succeded; End SASL authentication.
                 self.raw_send("CAP END\n")
 
         for ch in self.channels:
@@ -177,7 +181,7 @@ class ConsoleAdapter(Adapter):
                 message = input()
                 metadata = {"from_user": "console user", "from_group": "console", "when": "now",
                             "_id": self._id, "ident": self.identifier, "type": self.__class__.__name__,
-                            "mentioned": self.nick in message, "is_mod": True, }
+                            "mentioned": self.nick in message, "is_mod": True, "message_id": message, }
                 self.callback(message, metadata)
         except EOFError:
             print("^D\nGoodbye.")
@@ -187,8 +191,14 @@ class ConsoleAdapter(Adapter):
         self.callback = func
         self._id = _id
 
-    def send(self, message, to):
-        print('< {msg}'.format(to=to, msg=message))
+    def send(self, message, group):
+        for line in message.split("\n"):
+            msg = line.strip(" ")
+            print('< {msg}'.format(to=group, msg=msg))
+
+    def reply(self, message, to, group):
+        print('"{reply}"'.format(reply=to))
+        self.send(message, group)
 
 class Carbon:
     def __init__(self, adapters, commands = []):
@@ -230,13 +240,12 @@ if __name__ == "__main__":
     else:
         telegram = TelegramAdapter(os.environ.get('TELEGRAM_BOT_TOKEN'), os.environ.get('TELEGRAM_BOT_OWNER'))
         freenode = IRCAdapter(os.environ.get('IRC_SERVER_ADDRESS'), int(os.environ.get('IRC_SERVER_PORT')),
-            False if os.environ.get('IRC_SERVER_IS_SSL') is "0" else True, os.environ.get('IRC_CHANNELS').split(","),
+            bool(os.environ.get('IRC_SERVER_IS_SSL')), os.environ.get('IRC_CHANNELS').split(","),
             os.environ.get('IRC_OWNER'), nick = os.environ.get('IRC_NICK'), password=os.environ.get('IRC_SASL_PASSWORD'),
-            is_sasl = False if os.environ.get('IRC_SERVER_IS_SASL') is "0" else True)
+            is_sasl = bool(os.environ.get('IRC_SERVER_IS_SASL')))
         adapters = {"carbon_telegram_bot": telegram, "freenode_carbon_bot": freenode}
 
         Carbon(adapters, carbon2_commands.commands).run()
-
 
         #Logging code.
         #Will clean up later.

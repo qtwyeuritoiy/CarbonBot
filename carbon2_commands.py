@@ -1,4 +1,4 @@
-import random, re, sys, time, traceback, numbers
+import random, re, sys, time, numbers
 from carbon2_command_classes import CannedResponseCommand, Command
 import dice
 import hangman
@@ -91,7 +91,7 @@ def dice_fun(match, metadata, bot):
     try:
         dice_expression = dice.parse_expression(spec)[0]
     except dice.exceptions.DiceBaseException as e:
-        bot.send("Unsupported dice format:\n{}".format(e.pretty_print()), metadata["message_id"], metadata['from_group'], metadata['_id'])
+        bot.reply("Unsupported dice format:\n{}".format(e.pretty_print()), metadata["message_id"], metadata['from_group'], metadata['_id'])
 
         return
 
@@ -125,10 +125,10 @@ def dice_fun(match, metadata, bot):
             formatted = "Unable to recognize dice result"
             print("Unable to recognize dice result: {}".format(dice_result))
 
-    bot.send(formatted, metadata['from_group'], metadata['_id'])
+    bot.reply(formatted, metadata["message_id"], metadata['from_group'], metadata['_id'])
 
     # dice_expression.sides is broken: it gives 1 for fudge dice (-1 through 1), who clearly have 3 sides
-    if dice_expression.min_value == 1 and dice_expression.max_value == 1:
+    if dice_expression.min_value == dice_expression.max_value:
         bot.send("(seriously tho?)", metadata['from_group'], metadata['_id'])
 
 dice_cmd = Command(r"{ident}dice(?: (?P<dicespec>.+))?", "dice (<dice specification>)", "Roll a dice.", dice_fun)
@@ -139,6 +139,8 @@ def nested_eval(match, metadata, bot, command):
 
 def add_echo_command(match, metadata, bot):
     try:
+        if not match['condition'] or not match['command']: return
+
         condition = str(match['condition']).strip()
         command_str = str(match['command']).strip()
     except AttributeError:
