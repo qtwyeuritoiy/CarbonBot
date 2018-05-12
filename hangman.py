@@ -1,12 +1,12 @@
 #!/usr/bin/env python3
 
-from random import choice, randint
+from random import choice
 from carbon2_command_classes import Command
 
 # Word selection stuff
 
 with open('./hangman_words.txt', 'r') as _word_list_file:
-    _WORD_LIST = set(map(
+    _WORD_LIST = tuple(map(
         lambda x: x.rstrip('\n').lower(),
         _word_list_file.readlines()
     ))
@@ -99,7 +99,7 @@ def chat_new_game(match, metadata, bot):
     if adapter_id not in chat_games:
         chat_games[adapter_id] = {}
 
-    word_len = randint(5, 15)
+    word_len = len(choice(_WORD_LIST))
     game = {
         "word_len": word_len,
         "pattern": '_' * word_len,
