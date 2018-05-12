@@ -1,5 +1,6 @@
-import random, re, sys, time, traceback
+import random, re, sys, time, traceback, numbers
 from carbon2_command_classes import CannedResponseCommand, Command
+import dice
 import hangman
 
 about = CannedResponseCommand(r"{ident}about", "about", "Show information about this bot.",
@@ -24,7 +25,8 @@ def print_help(match, metadata, bot):
     try:
         index = int(match['page'].strip()) - 1
     except ValueError:
-        bot.send("Invalid argument: expecting number.", metadata['from_group'], metadata['_id'])
+        bot.send("Invalid argument: expecting integer.", metadata['from_group'], metadata['_id'])
+        return
     except AttributeError:
         index = 0
 
@@ -51,47 +53,78 @@ def print_help(match, metadata, bot):
 help = Command(r"{ident}help(?: ?(?P<page>\d+))?", "help <page>", "Show this text.", print_help)
 
 
-die_sides = (None, "⚀", "⚁", "⚂", "⚃", "⚄", "⚅")
+DIE_SIDES = ("⚀", "⚁", "⚂", "⚃", "⚄", "⚅")
 
-def roll_die(sides):
-    value = random.randrange(1, sides+1)
-    return (value, die_sides[value] if sides == 6 else "[{}]".format(value))
+def format_six_faced_die(value):
+    return DIE_SIDES[value-1]
 
-def dice(match, metadata, bot):
+
+def format_other_die(value):
+    return "[{}]".format(value)
+
+
+def dice_fun(match, metadata, bot):
+    spec = match["dicespec"]
+
+    if not spec:
+        spec = "1d6"
+
+    if "," in spec:
+        spec = spec.split(",")
+        for x in spec:
+            match = groupdict(match)
+            match["dicespec"] = x
+            dice(match, metadata, bot)
+        return
+
+    # Some cases we would like to handle that the dice library does not support
+    if re.fullmatch(r'\d+', spec):
+        spec = "1d" + spec
+    elif re.fullmatch(r'\d+d', spec):
+        spec = spec + "6"
+
+    # Let the dice library parse the format
     try:
-        sides = int(match['sides'].strip())
-    except ValueError:
-        bot.send("Invalid argument: expecting integer.", metadata['from_group'], metadata['_id'])
+        dice_expression = dice.parse_expression(spec)[0]
+    except dice.exceptions.DiceBaseException as e:
+        bot.send("Unsupported dice format:\n{}".format(e.pretty_print()), metadata['from_group'], metadata['_id'])
         return
-    except AttributeError:
-        sides = 6
 
+    # Roll the dice
+    dice_result = dice_expression.evaluate_cached()
+
+    # Format the result
     try:
-        dice = int(match['dice'].strip())
-    except ValueError:
-        bot.send("Invalid argument: expecting integer.", metadata['from_group'], metadata['_id'])
-        return
+        # Format 6-faced dice differently
+        if dice_expression.min_value == 1 and dice_expression.max_value == 6:
+            formatter = format_six_faced_die
+        else:
+            formatter = format_other_die
+
+        if dice_expression.amount == 1:
+            format_string = "{graphic}"
+        else:
+            format_string = "{total}: {graphic}"
+
+        formatted = format_string.format(graphic=' '.join(map(formatter, dice_result)),
+                                         total=sum(dice_result))
+
     except AttributeError:
-        dice = 1
+        # If the dice_expression doesn't have min_value, it's probably a complex spec that evaluates to just a number.
+        # Check this explicitly to avoid leaking information.
+        if isinstance(dice_result, numbers.Number):
+            formatted = str(dice_result)
+        else:
+            formatted = "Unable to recognize dice result"
+            print("Unable to recognize dice result: {}".format(dice_result))
 
-    if sides < 1:
-        bot.send("Hey, thought I can't do math? Your number is too small!", metadata['from_group'], metadata['_id'])
-        return
 
-    die_results = tuple( roll_die(sides) for _ in range(dice) )
+    bot.send(formatted, metadata['from_group'], metadata['_id'])
 
-    bot.send(
-        ("{dicefaces}" if dice == 1 else "{dicefaces} = {total}"
-         ).format(dicefaces = " ".join(map(lambda x: x[1], die_results)),
-                  total = sum(map(lambda x: x[0], die_results))
-                  ),
-        metadata['from_group'], metadata['_id']
-    )
-
-    if sides is 1:
+    if dice_expression.sides == 1:
         bot.send("(seriously tho?)", metadata['from_group'], metadata['_id'])
 
-dice = Command(r"{ident}dice(?: (?:(?P<dice>\d+)d)?(?P<sides>-?\d+)?)?", "dice ((<number of dice>d)<number of sides>)", "Roll a dice.", dice)
+dice_cmd = Command(r"{ident}dice(?: (?P<dicespec>.+))?", "dice (<dice specification>)", "Roll a dice.", dice_fun)
 
 def nested_eval(match, metadata, bot, command):
     metadata['nested'] = True
@@ -184,4 +217,4 @@ regex_switch = Command(r"#regexif(?: (?P<bool>true|false))?", "", "", switch_reg
     display_condition = lambda message, metadata, bot: False,
     exec_condition = lambda message, metadata, bot: metadata["is_mod"], flags=["mod"])
 
-commands = [help, about, ping, dice, uptime, echo, add_echo, remove_echo, list_echo, regex_switch, *hangman.commands, ]
+commands = [help, about, ping, dice_cmd, uptime, echo, add_echo, remove_echo, list_echo, regex_switch, *hangman.commands, ]
