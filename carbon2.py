@@ -51,6 +51,9 @@ class IRCAdapter(Adapter):
             message = line.strip(" ")
             self.raw_send("PRIVMSG " + to + " :" + message + "\n")
 
+    def reply(self, message, to, group):
+        return self.send(to+": "+message, group)
+
     def join_channel(self, ch):
         self.raw_send("JOIN %s\n"%ch)
 
@@ -114,7 +117,8 @@ class IRCAdapter(Adapter):
                     message = msg.split(":", 2)[2]
                     metadata = {"from_user": user, "from_group": ch, "when": datetime.now(),
                             "_id": self._id, "ident": self.identifier, "type": self.__class__.__name__,
-                            "mentioned": self.nick in message, "is_mod": user == self.owner, } #FIXME: Check for other admins in the channel.
+                            "mentioned": self.nick in message, "is_mod": user == self.owner, #FIXME: Check for other admins in the channel.
+                            "message_id": user, }
                     self.execute(message, metadata)
 
             except Exception as e:
@@ -145,14 +149,19 @@ class TelegramAdapter(Adapter):
         message = update.message.text.strip().replace("@"+self.bot_id, "")
         from_user = update.message.from_user.name
         from_group = update.message.chat_id
+        message_id = update.message.message_id
         when = update.message.date
         metadata = {"from_user": from_user, "from_group": from_group, "when": when,
                 "_id": self._id, "ident": self.identifier, "type": self.__class__.__name__,
-                "mentioned": "@"+self.bot_id in message, "is_mod": from_user == self.admin_id, } #FIXME: Check for other admins in the channel.
+                "mentioned": "@"+self.bot_id in message, "is_mod": from_user == self.admin_id, #FIXME: Check for other admins in the channel.
+                "message_id": message_id, }
         self.callback(message, metadata)
 
-    def send(self, message, to):
-        self.bot.send_message(chat_id=to, text=message)
+    def send(self, message, group):
+        self.bot.send_message(chat_id=group, text=message)
+
+    def reply(self, message, to, group):
+        self.bot.send_message(chat_id=group, text=message, reply_to_message_id=to)
 
 class ConsoleAdapter(Adapter):
     def __init__(self, nick="Carbon"):
@@ -203,8 +212,11 @@ class Carbon:
             if match is not None:
                 command.on_exec(match, {**metadata, **self.metadata}, self)
 
-    def send(self, message, to, _id):
-        self.adapters[_id].send(message, to)
+    def send(self, message, group, _id):
+        self.adapters[_id].send(message, group)
+
+    def reply(self, message, to, group, _id):
+        self.adapters[_id].reply(message, to, group)
 
     def finalise(self):
         for adapter in self.adapters.values():
