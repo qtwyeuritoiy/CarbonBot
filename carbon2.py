@@ -6,7 +6,8 @@ from datetime import datetime
 
 class Adapter(threading.Thread):
     def __init__(self, identifier="!"):
-        self.identifier=identifier
+        self.identifier = identifier
+        self.identifier_optional = "(?:" + self.identifier + ")?"
 
     def register_callback(self, func, _id):
         pass
@@ -61,27 +62,36 @@ class IRCAdapter(Adapter):
         self.raw_send("JOIN %s\n"%ch)
 
     def handle_message(self, chan, user, message):
-        # Check if the message was sent through a bridging bot
-        # First we check the sender's nick
-        m_user = re.fullmatch(r'[^a-zA-Z]+|apiaceae', user)
-        # Then we check the message. Also support color codes, sent e.g. by the Telegram bridging bot
-        # Those colored messages look like this:   <05imsesaok>: SiliconBot: dice
-        # Non-colored messages may look like this: <imsesaok> : SiliconBot: dice
-        # The regex liberally allows those cases.
-        m_message = re.fullmatch(r'<(?:\x03[^\x02]*\x02*)?([^>\x03]+)\x03?> *: (.+)', message)
-        if m_user and m_message:
-            # Move information so that we think this message came from that user
-            # Append [proxy] to avoid impersonation
-            proxy_user = user
-            user       = "{}[{}]".format(m_message[1], proxy_user)
-            message    = m_message[2]
+        is_pm = chan == user
 
-        self.logger.info("Received message in ``{}'' from ``{}'': ``{}''".format(chan, user, message))
+        if not is_pm:
+            # Check if the message was sent through a bridging bot
+            # First we check the sender's nick
+            m_user = re.fullmatch(r'[^a-zA-Z]+|apiaceae', user)
+            # Then we check the message. Also support color codes, sent e.g. by the Telegram bridging bot
+            # Those colored messages look like this:   <05imsesaok>: SiliconBot: dice
+            # Non-colored messages may look like this: <imsesaok> : SiliconBot: dice
+            # The regex liberally allows those cases.
+            m_message = re.fullmatch(r'<(?:\x03[^\x02]*\x02*)?([^>\x03]+)\x03?> *: (.+)', message)
+            if m_user and m_message:
+                # Move information so that we think this message came from that user
+                # Append [proxy] to avoid impersonation
+                proxy_user = user
+                user       = "{}[{}]".format(m_message[1], proxy_user)
+                message    = m_message[2]
+
+            self.logger.info("Received message in ``{}'' from ``{}'': ``{}''".format(chan, user, message))
+
+        else:
+            self.logger.info("Received PM from ``{}'': ``{}''".format(user, message))
+
+        # In PMs, using an identifier is optional
+        ident = self.identifier_optional if is_pm else self.identifier
 
         metadata = {"from_user": user, "from_group": chan, "when": datetime.now(),
-                "_id": self._id, "ident": self.identifier, "type": self.__class__.__name__,
-                "mentioned": self.nick in message, "is_mod": user == self.owner, #FIXME: Check for other admins in the channel.
-                "message_id": user, }
+                    "_id": self._id, "ident": ident, "type": self.__class__.__name__,
+                    "mentioned": self.nick in message, "is_mod": user == self.owner, #FIXME: Check for other admins in the channel.
+                    "message_id": user, "pm": is_pm }
         self.execute(message, metadata)
 
     def run(self):
