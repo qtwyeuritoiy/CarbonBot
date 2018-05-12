@@ -58,7 +58,7 @@ def format_six_faced_die(value):
 
 
 def format_fudge_die(value):
-    return ("⊟", "⊡", "⊞")[value+1]
+    return ("⊟", "⊠", "⊞")[value+1]
 
 
 def format_other_die(value):
