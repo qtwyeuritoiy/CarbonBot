@@ -50,23 +50,48 @@ def print_help(match, metadata, bot):
 
 help = Command(r"{ident}help(?: ?(?P<page>\d+))?", "help <page>", "Show this text.", print_help)
 
+
+die_sides = (None, "⚀", "⚁", "⚂", "⚃", "⚄", "⚅")
+
+def roll_die(sides):
+    value = random.randrange(1, sides+1)
+    return (value, die_sides[value] if sides == 6 else "[{}]".format(value))
+
 def dice(match, metadata, bot):
     try:
-        number = int(match['number'].strip())
+        sides = int(match['sides'].strip())
     except ValueError:
-        bot.send("Invalid argument: expecting number.", metadata['from_group'], metadata['_id'])
+        bot.send("Invalid argument: expecting integer.", metadata['from_group'], metadata['_id'])
         return
     except AttributeError:
-        number = 6
+        sides = 6
 
-    if number < 1:
+    try:
+        dice = int(match['dice'].strip())
+    except ValueError:
+        bot.send("Invalid argument: expecting integer.", metadata['from_group'], metadata['_id'])
+        return
+    except AttributeError:
+        dice = 1
+
+    if sides < 1:
         bot.send("Hey, thought I can't do math? Your number is too small!", metadata['from_group'], metadata['_id'])
-    elif number is 1:
-        bot.send("1!\n(seriously tho?)", metadata['from_group'], metadata['_id'])
-    else:
-        bot.send(str(random.randrange(1, number+1)) + "!", metadata['from_group'], metadata['_id'])
+        return
 
-dice = Command(r"{ident}dice(?: (?P<number>\d+))?", "dice (<number>)", "Roll a dice.", dice)
+    die_results = tuple( roll_die(sides) for _ in range(dice) )
+
+    bot.send(
+        ("{dicefaces}" if dice == 1 else "{dicefaces} = {total}"
+         ).format(dicefaces = " ".join(map(lambda x: x[1], die_results)),
+                  total = sum(map(lambda x: x[0], die_results))
+                  ),
+        metadata['from_group'], metadata['_id']
+    )
+
+    if sides is 1:
+        bot.send("(seriously tho?)", metadata['from_group'], metadata['_id'])
+
+dice = Command(r"{ident}dice(?: (?:(?P<dice>\d+)d)?(?P<sides>-?\d+)?)?", "dice ((<number of dice>d)<number of sides>)", "Roll a dice.", dice)
 
 def nested_eval(match, metadata, bot, command):
     metadata['nested'] = True
