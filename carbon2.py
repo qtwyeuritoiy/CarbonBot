@@ -241,6 +241,7 @@ class ConsoleAdapter(Adapter):
         print('"{reply}"'.format(reply=to))
         self.send(message, group)
 
+
 class Carbon:
     def __init__(self, adapters, commands = []):
         self.commands = commands
@@ -254,14 +255,21 @@ class Carbon:
             adapter.start()
 
     def process(self, message, metadata):
+        found_match = False
+
         for command in self.commands:
             if command.raw_match:
                 match = message if command.regex == message else None
             else:
                 regex = command.regex.format(ident=metadata["ident"])
                 match = re.search("^{}$".format(regex), message)
+
             if match is not None:
+                found_match = True
                 command.on_exec(match, {**metadata, **self.metadata}, self)
+
+        if not found_match and re.match(metadata["ident"], message):
+            self.reply('Command not recognized.', metadata["message_id"], metadata['from_group'], metadata['_id'])
 
     def send(self, message, group, _id):
         self.adapters[_id].send(message, group)
