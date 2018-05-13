@@ -147,6 +147,13 @@ def chat_guess(match, metadata, bot):
         chat_status(match, metadata, bot)
         return
 
+    if guessed_letter in game["previous_letters"]:
+        bot.reply(("You already guessed {letter}"
+                   if guessed_letter in game["pattern"]
+                   else "You already tried {letter}"
+                   ).format(letter=guessed_letter.upper(), metadata['message_id'], metadata['from_group'], metadata['_id'])
+        return
+
     selection = select(game["pattern"], game["previous_letters"], guessed_letter)
     if selection is None:
         bot.reply("Sorry, something went wrong!", metadata['message_id'], metadata['from_group'], metadata['_id'])
