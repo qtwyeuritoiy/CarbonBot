@@ -151,7 +151,8 @@ def chat_guess(match, metadata, bot):
         bot.reply(("You already guessed {letter}"
                    if guessed_letter in game["pattern"]
                    else "You already tried {letter}"
-                   ).format(letter=guessed_letter.upper(), metadata['message_id'], metadata['from_group'], metadata['_id'])
+                   ).format(letter=guessed_letter.upper()),
+                  metadata['message_id'], metadata['from_group'], metadata['_id'])
         return
 
     selection = select(game["pattern"], game["previous_letters"], guessed_letter)
