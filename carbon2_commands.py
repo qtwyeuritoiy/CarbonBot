@@ -170,7 +170,8 @@ def list_rules(match, metadata, bot):
             bot.reply("No Rules Defined.", metadata["message_id"], metadata['from_group'], metadata['_id'])
 
 list_echo = Command(r"{ident}rule(?: (?P<condition>.+))?", "rule <condition>",
-    "Display All Rules or (If Condition Is Given) Display Rule Containing Given Condition.", list_rules)
+    "Display All Rules or (If Condition Is Given) Display Rule Containing Given Condition.", list_rules,
+    exec_condition = lambda message, metadata, bot: metadata.get("nested", None) is None)
 
 def switch_regexif(match, metadata, bot):
     try:
