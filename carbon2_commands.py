@@ -1,7 +1,6 @@
-import random, re, sys, time, numbers
+import re, time
 from carbon2_command_classes import CannedResponseCommand, Command
-import dice
-import hangman
+import hangman, carbon2_dice
 
 about = CannedResponseCommand(r"{ident}about", "about", "Show information about this bot.",
     canned = "Carbon 2.0 alpha\nA Multi-Protocol Bot developed by imsesaok.\nhttps://github.com/qtwyeuritoiy/CarbonBot2")
@@ -53,86 +52,6 @@ def print_help(match, metadata, bot):
 
 help = Command(r"{ident}help(?: ?(?P<page>\d+))?", "help <page>", "Show this text.", print_help)
 
-
-def format_six_faced_die(value):
-    return ("⚀", "⚁", "⚂", "⚃", "⚄", "⚅")[value-1]
-
-
-def format_fudge_die(value):
-    return ("⊟", "⊡", "⊞")[value+1]
-
-
-def format_other_die(value):
-    return "[{}]".format(value)
-
-
-def dice_fun(match, metadata, bot):
-    spec = match["dicespec"]
-
-    if not spec:
-        spec = "1d6"
-
-    if "," in spec:
-        spec = spec.split(",")
-
-        match = match.groupdict()
-        for x in spec:
-            match["dicespec"] = x
-            dice_fun(match, metadata, bot)
-        return
-
-    # Some cases we would like to handle that the dice library does not support
-    if re.fullmatch(r'\d+', spec):
-        spec = "1d" + spec
-    elif re.fullmatch(r'\d+d', spec):
-        spec = spec + "6"
-
-    # Let the dice library parse the format
-    try:
-        dice_expression = dice.parse_expression(spec)[0]
-    except dice.exceptions.DiceBaseException as e:
-        bot.reply("Unsupported dice format:\n{}".format(e.pretty_print()), metadata["message_id"], metadata['from_group'], metadata['_id'])
-
-        return
-
-    # Roll the dice
-    dice_result = dice_expression.evaluate_cached()
-
-    # Format the result
-    try:
-        # Format 6-faced dice differently
-        if dice_expression.min_value == 1 and dice_expression.max_value == 6:
-            formatter = format_six_faced_die
-        elif dice_expression.min_value == -1 and dice_expression.max_value == 1:
-            formatter = format_fudge_die
-        else:
-            formatter = format_other_die
-
-        if dice_expression.amount == 1:
-            format_string = "{graphic}"
-        else:
-            format_string = "{total}: {graphic}"
-
-        formatted = format_string.format(graphic=' '.join(map(formatter, dice_result)),
-                                         total=sum(dice_result))
-
-    except AttributeError:
-        # If the dice_expression doesn't have min_value, it's probably a complex spec that evaluates to just a number.
-        # Check this explicitly to avoid leaking information.
-        if isinstance(dice_result, numbers.Number):
-            formatted = str(dice_result)
-        else:
-            formatted = "Unable to recognize dice result"
-            print("Unable to recognize dice result: {}".format(dice_result))
-
-    bot.reply(formatted, metadata["message_id"], metadata['from_group'], metadata['_id'])
-
-    # dice_expression.sides is broken: it gives 1 for fudge dice (-1 through 1), who clearly have 3 sides
-    if dice_expression.min_value == dice_expression.max_value:
-        bot.send("(seriously tho?)", metadata['from_group'], metadata['_id'])
-
-dice_cmd = Command(r"{ident}dice(?: (?P<dicespec>.+))?", "dice (<dice specification>)", "Roll a dice.", dice_fun)
-
 def nested_eval(match, metadata, bot, command):
     metadata['nested'] = True
     bot.process(command, metadata)
@@ -149,20 +68,35 @@ def add_echo_command(match, metadata, bot):
     group = metadata['from_group']
     adapter_id = metadata["_id"]
 
-    conditional_cmd = Command(condition, condition, command_str, lambda match, metadata, bot: nested_eval(match, metadata, bot, command_str), flags=["echo"],
+    try:
+        re.compile(condition)
+    except re.error as e:
+        bot.reply("Rule Not Accepted: Regular expression is not valid. ({})".format(e), metadata["message_id"], metadata['from_group'], metadata['_id'])
+        return
+
+    conditional_cmd = Command(condition, condition, command_str, lambda match, metadata, bot:
+        nested_eval(match, metadata, bot, command_str), flags=["echo"],
         display_condition = lambda message, metadata, bot: False,
         exec_condition = lambda message, metadata, bot:
             metadata['from_group'] == group and metadata["_id"] == adapter_id and bot.metadata.get("regexif", True) and not metadata.get("nested", False))
 
+    command_works=False
+
     for command in bot.commands:
         if command.exec_condition(match, metadata, bot):
             if condition == command.regex and "echo" in command.flags:
-                bot.reply("Rule Already Exists: '{}' -> {}\nDelete the command before writing a new one.".format(command.regex, command.description),
+                bot.reply("Rule Not Accepted: Rule already exists. ('{}' -> {})\nDelete the command before writing a new one.".format(command.regex, command.description),
                         metadata["message_id"], metadata['from_group'], metadata['_id'])
                 return
-            elif re.search("^{command}$".format(command=command.regex.format(ident=metadata["ident"])), condition) and not command.raw_match:
+            elif re.search("^{command}$".format(command=command.regex.format(ident=metadata["ident"])), condition) and not command.raw_match: #The condition matches the regex of the existing command.
                 bot.reply("Rule Not Accepted: You cannot override existing commands.", metadata["message_id"], metadata['from_group'], metadata['_id'])
                 return
+            elif command.exec_condition(match, {**metadata, "nested": True}, bot) and re.search("^{command}$".format(command=command.regex.format(ident=metadata["ident"])), command_str):
+                command_works=True
+
+    if not command_works:
+        bot.reply("Rule Not Accepted: The command '{}' is not defined or accessible.".format(command_str), metadata["message_id"], metadata['from_group'], metadata['_id'])
+        return
 
     bot.commands.append(conditional_cmd)
     bot.reply("Rule successfully created: '{}' -> {}".format(conditional_cmd.regex, conditional_cmd.description), metadata["message_id"],
@@ -254,4 +188,4 @@ regex_switch = Command(r"#regexif(?: (?P<bool>true|false))?", "", "", switch_reg
     display_condition = lambda message, metadata, bot: False,
     exec_condition = lambda message, metadata, bot: metadata["is_mod"], flags=["mod"])
 
-commands = [help, about, ping, dice_cmd, uptime, echo, add_echo, remove_echo, list_echo, regex_switch, *hangman.commands, ]
+commands = [help, about, ping, carbon2_dice.dice_cmd, uptime, echo, add_echo, remove_echo, list_echo, regex_switch, *hangman.commands, ]

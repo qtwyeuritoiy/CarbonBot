@@ -1,4 +1,4 @@
-import traceback
+import traceback, sys
 
 class Command:
     def __init__(self, regex, title, description, on_exec, raw_match=False,
@@ -18,10 +18,9 @@ class Command:
         try:
             if self.exec_condition(match, metadata, bot):
                 self.func(match, metadata, bot)
-        except:
+        except Exception as e:
             traceback.print_exc()
-            e = sys.exc_info()[0]
-            bot.send("Oops! Something Went Horribly Wrong! (%s)" % e.pretty_print(),
+            bot.send("Oops! Something Went Horribly Wrong! (%s)" % e,
                     metadata['from_group'], metadata['_id'])
 
 class CannedResponseCommand(Command):
