@@ -124,11 +124,10 @@ def chat_start(match, metadata, bot):
     if game:
         bot.send("Send a message consisting of one letter to make a guess.", metadata['from_group'], metadata['_id'])
     else:
-
         game = chat_new_game(match, metadata, bot)
 
-        bot.send("Started a new hangman game in English! The word is {word_len} letters long. Guess a letter…".format(word_len=game["word_len"]),
-                 metadata['from_group'], metadata['_id'])
+        bot.reply("Started a new hangman game in English! The word is {word_len} letters long. Guess a letter…".format(word_len=game["word_len"]),
+                 metadata['message_id'], metadata['from_group'], metadata['_id'])
 
     chat_status(match, metadata, bot)
 
@@ -138,18 +137,19 @@ def chat_guess(match, metadata, bot):
 
     if not game:
         if match['cmd']:
-            bot.send("There's no hangman game going on here! Start one first by doing !hangman", metadata['from_group'], metadata['_id'])
+            bot.reply("There's no hangman game going on here! Start one first by doing !hangman", metadata['message_id'],
+                      metadata['from_group'], metadata['_id'])
         return
 
     guessed_letter = match["letter"].lower()
     if guessed_letter == "_":
-        bot.send("No words contain underscores. Lol, that'd be confusing.", metadata['from_group'], metadata['_id'])
+        bot.reply("No words contain underscores. Lol, that'd be confusing.", metadata['message_id'], metadata['from_group'], metadata['_id'])
         chat_status(match, metadata, bot)
         return
 
     selection = select(game["pattern"], game["previous_letters"], guessed_letter)
     if selection is None:
-        bot.send("Sorry, something went wrong!", metadata['from_group'], metadata['_id'])
+        bot.reply("Sorry, something went wrong!", metadata['message_id'], metadata['from_group'], metadata['_id'])
         chat_end(match, metadata, bot)
         return
 
@@ -162,17 +162,16 @@ def chat_guess(match, metadata, bot):
         # Guessed the word!
         chat_status(match, metadata, bot)
         chat_end(match, metadata, bot)
-        bot.send("Congratulations, you guessed the word!", metadata['from_group'], metadata['_id'])
+        bot.reply("Congratulations, you guessed the word!", metadata['message_id'], metadata['from_group'], metadata['_id'])
         return
 
     if not game["misses_left"]:
         chat_status(match, metadata, bot)
         chat_end(match, metadata, bot)
-        bot.send("Game over! The word was {}.".format(matching_word.upper()), metadata['from_group'], metadata['_id'])
+        bot.reply("Game over! The word was {}.".format(matching_word.upper()), metadata['message_id'], metadata['from_group'], metadata['_id'])
         return
 
     chat_status(match, metadata, bot)
-
 
 def chat_status(match, metadata, bot):
     game = chat_get_game(match, metadata, bot)
@@ -187,7 +186,7 @@ def chat_status(match, metadata, bot):
 
 commands = (
     Command(r"{ident}hangman(?: .*)?", "Play a game of hangman", "Find the word by guessing one letter at a time", chat_start),
-    Command(r"(?P<cmd>{ident}guess )?(?P<letter>.)", "", "", chat_guess,
+    Command(r"(?P<cmd>{ident}guess )?(?P<letter>[A-Za-z_])", "", "", chat_guess,
             display_condition = lambda message, metadata, bot: False,
             ),
 )
