@@ -155,6 +155,9 @@ class IRCAdapter(Adapter):
                     continue
 
                 m = re.fullmatch(r':(?P<nick>[^\s]+)![^\s]+@[^\s]+ PRIVMSG (?P<chan>[^\s]+) :(?P<msg>.*)', msg)
+                if not m:
+                    continue
+
                 sender = m["nick"]
                 chan = m["chan"]
 
@@ -163,8 +166,7 @@ class IRCAdapter(Adapter):
                 if chan == self.nick:
                     chan = sender
 
-                if m:
-                    self.handle_message(chan, sender, m["msg"])
+                self.handle_message(chan, sender, m["msg"])
 
             except Exception as e:
                 self.logger.error("Error while reading socket.", exc_info=True)
