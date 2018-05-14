@@ -19,7 +19,7 @@ def print_help(match, metadata, bot):
     try:
         index = int(match['page'].strip()) - 1
     except ValueError:
-        bot.reply("Invalid argument: expecting number.", metadata["message_id"], metadata['from_group'], metadata['_id'])
+        bot.reply("Invalid argument: expecting integer.", metadata["message_id"], metadata['from_group'], metadata['_id'])
         return
     except AttributeError:
         index = 0
@@ -31,11 +31,11 @@ def print_help(match, metadata, bot):
     if command_count < end:
         end = command_count
         if end <= start:
-            bot.reply("Invalid number: use number below " + str(maximum) + ".", metadata["message_id"],
+            bot.reply("Invalid number: use a number below " + str(maximum) + ".", metadata["message_id"],
                 metadata['from_group'], metadata['_id'])
             return
 
-    bot.reply("Usage: <identifier><command>\nIdentifier setting for the current adapter: {}\n".format(metadata["ident"]),
+    bot.reply("Usage: <identifier><command>\nIdentifier setting for the current adapter: `{}`\n".format(metadata["ident"]),
         metadata["message_id"], metadata['from_group'], metadata['_id'])
 
     message = "Commands: " + str(index + 1) + " out of " + str(maximum)
@@ -53,9 +53,9 @@ def register_with(carbon):
                               "about",
                               "Show information about this bot.",
                               canned = \
-    """Carbon 2.0 alpha
-    A Multi-Protocol Bot developed by imsesaok with contributions by M1dgard.
-    https://github.com/qtwyeuritoiy/CarbonBot2"""
+"""Carbon 2.0 alpha
+A Multi-Protocol Bot developed by imsesaok with contributions by M1dgard.
+https://github.com/qtwyeuritoiy/CarbonBot2"""
                               ),
 
         # Ping to test connection

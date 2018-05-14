@@ -24,7 +24,7 @@ def add(match, metadata, bot):
     try:
         re.compile(condition)
     except re.error as e:
-        bot.reply("Rule Not Accepted: Regular expression is not valid. ({})".format(e), metadata["message_id"], metadata['from_group'], metadata['_id'])
+        bot.reply("Rule not accepted: regular expression is not valid. ({})".format(e), metadata["message_id"], metadata['from_group'], metadata['_id'])
         return
 
     conditional_cmd = Command(condition, condition, command_str, lambda match, metadata, bot:
@@ -38,17 +38,17 @@ def add(match, metadata, bot):
     for command in bot.commands:
         if command.exec_condition(match, metadata, bot):
             if condition == command.regex and "echo" in command.flags:
-                bot.reply("Rule Not Accepted: Rule already exists. ('{}' -> {})\nDelete the command before writing a new one.".format(command.regex, command.description),
+                bot.reply("Rule not accepted: rule already exists. ('{}' -> {})\nDelete the command before writing a new one.".format(command.regex, command.description),
                         metadata["message_id"], metadata['from_group'], metadata['_id'])
                 return
             elif re.search("^{command}$".format(command=command.regex.format(ident=metadata["ident"])), condition) and not command.raw_match: #The condition matches the regex of the existing command.
-                bot.reply("Rule Not Accepted: You cannot override existing commands.", metadata["message_id"], metadata['from_group'], metadata['_id'])
+                bot.reply("Rule not accepted: you cannot override existing commands.", metadata["message_id"], metadata['from_group'], metadata['_id'])
                 return
             elif command.exec_condition(match, {**metadata, "nested": True}, bot) and re.search("^{command}$".format(command=command.regex.format(ident=metadata["ident"])), command_str):
                 command_works=True
 
     if not command_works:
-        bot.reply("Rule Not Accepted: The command '{}' is not defined or accessible.".format(command_str), metadata["message_id"], metadata['from_group'], metadata['_id'])
+        bot.reply("rule not accepted: the command '{}' is not defined or accessible.".format(command_str), metadata["message_id"], metadata['from_group'], metadata['_id'])
         return
 
     bot.commands.append(conditional_cmd)
@@ -86,7 +86,12 @@ def remove_matching(match, metadata, bot):
                 del_count += 1
 
     if del_count > 0:
-        bot.reply("%d rule(s) has been successfully deleted."%del_count, metadata["message_id"], metadata['from_group'], metadata['_id'])
+        bot.reply("{} rule{} ha{} been successfully deleted.".format(del_count,
+                                                                     "s" if del_count != 1 else "",
+                                                                     "ve" if del_count != 1 else "s"
+                                                                     ),
+                  metadata["message_id"], metadata['from_group'], metadata['_id']
+                  )
     else:
         bot.reply("No matching rules exist.", metadata["message_id"], metadata['from_group'], metadata['_id'])
 
@@ -102,7 +107,7 @@ def show(match, metadata, bot):
             if condition == command.regex and "echo" in command.flags and command.exec_condition(match, metadata, bot):
                 bot.reply("'{}' -> {}".format(command.title, command.description), metadata["message_id"], metadata['from_group'], metadata['_id'])
                 return
-        bot.reply("Rule with condition '{}' Not Found.".format(condition), metadata["message_id"], metadata['from_group'], metadata['_id'])
+        bot.reply("Rule with condition '{}' not found.".format(condition), metadata["message_id"], metadata['from_group'], metadata['_id'])
     else:
         rules = ""
         for command in bot.commands:
@@ -112,7 +117,7 @@ def show(match, metadata, bot):
         if rules:
             bot.reply(rules, metadata["message_id"], metadata['from_group'], metadata['_id'])
         else:
-            bot.reply("No Rules Defined.", metadata["message_id"], metadata['from_group'], metadata['_id'])
+            bot.reply("No rules defined.", metadata["message_id"], metadata['from_group'], metadata['_id'])
 
 
 def set_regexif(match, metadata, bot):
@@ -133,7 +138,7 @@ def register_with(carbon):
         # Add rule
         Command(r"(?P<ident>{ident})if(?: (?P<condition>.+?) (?P<command>(?P=ident).+?))?",
                 "if <condition> <command>",
-                "Excecute certain command when certain message is sent.",
+                "Excecute certain command when a message matching the condition is sent.",
                 add,
                 exec_condition = lambda message, metadata, bot: metadata.get("nested", None) is None
                 ),
@@ -141,14 +146,14 @@ def register_with(carbon):
         # Show rules
         Command(r"{ident}rule(?: (?P<condition>.+))?",
                 "rule <condition>",
-                "Display All Rules or (If Condition Is Given) Display Rule Containing Given Condition.",
+                "Display all rules or (if condition is given) display rules matching given condition.",
                 show
                 ),
 
         # Remove rule
         Command(r"{ident}removeif(?: (?P<condition>.+?))?",
-                "removeif <message>",
-                "Remove the echo ruleby providing regex.",
+                "removeif <condition>",
+                "Remove a rule by providing its condition literally.",
                 remove,
                 exec_condition = lambda message, metadata, bot: metadata.get("nested", None) is None
                 ),
@@ -156,7 +161,7 @@ def register_with(carbon):
         # Remove rule by matching
         Command(r"{ident}removematch(?: (?P<condition>.+?))?",
                 "removematch <message>",
-                "Remove the echo rule by matching regex.",
+                "Remove rules that would match on given text.",
                 remove_matching,
                 exec_condition = lambda message, metadata, bot: metadata.get("nested", None) is None
                 ),

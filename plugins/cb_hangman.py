@@ -195,8 +195,14 @@ def chat_status(match, metadata, bot):
 
 def register_with(carbon):
     carbon.add_commands(
-        Command(r"{ident}hangman(?: .*)?", "Play a game of hangman", "Find the word by guessing one letter at a time", chat_start),
-        Command(r"(?P<cmd>{ident}guess )?(?P<letter>[A-Za-z_])", "", "", chat_guess,
+        Command(r"{ident}hangman(?: .*)?",
+                "hangman",
+                "Play a game of hangman: guess a word one letter at a time",
+                chat_start
+                ),
+        Command(r"(?P<cmd>{ident}guess )?(?P<letter>[A-Za-z_])",
+                "", "",
+                chat_guess,
                 display_condition = lambda message, metadata, bot: False,
                 ),
     )

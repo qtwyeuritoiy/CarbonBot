@@ -30,7 +30,7 @@ class Command:
                 self.func(match, metadata, bot)
         except Exception as e:
             traceback.print_exc()
-            bot.send("Oops! Something Went Horribly Wrong! (%s)" % e,
+            bot.send("Oops, something went horribly wrong! (%s)" % e,
                     metadata['from_group'], metadata['_id'])
 
 
