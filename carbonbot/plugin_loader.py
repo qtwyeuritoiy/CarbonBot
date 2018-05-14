@@ -64,9 +64,10 @@ def load_all(directory=DEFAULT_DIR) -> dict:
 
 def register_all(carbon: "cb.Carbon", plugins) -> None:
     for plugin in plugins:
+        name = "couldn't detect name, this is probably not a module loaded with plugin_loader"
         try:
-            plugin.register_with(carbon)
             name = plugin.CARBONBOT_MODULE_NAME
+            plugin.register_with(carbon)
 
         except:
             print("Failed to register module `{}`.".format(name), file=sys.stderr, end=" ")
