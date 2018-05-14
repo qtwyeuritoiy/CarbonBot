@@ -25,11 +25,11 @@
         },
         "dice": {
             "hashes": [
-                "sha256:854869702a1f5acf23e75a0f7730859a6fcd2b43b19098d423fb57c41831f716",
-                "sha256:dd61f2a6ca503bc53e22578e064ab653e3b193d4b53a6aac9b7ea2e142c8d331"
+                "sha256:4a877d29378586689d99d580f49519c843ffb540f7d8eea2f80576a5a75277d1",
+                "sha256:b9a622b2cc28feca4390e5308d8639e9a049c7a36d5d4c14b6259dae9511aaa0"
             ],
             "index": "pypi",
-            "version": "==2.3.0"
+            "version": "==2.3.1"
         },
         "docopt": {
             "hashes": [

@@ -285,7 +285,6 @@ class ConsoleAdapter(Adapter):
             print('< {msg}'.format(to=group, msg=msg))
 
     def reply(self, message, to, group):
-        print('"{reply}"'.format(reply=to))
         self.send(message, group)
 
 
