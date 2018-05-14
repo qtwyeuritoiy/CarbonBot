@@ -167,7 +167,9 @@ def register_with(carbon):
                 ),
 
         # Regexif
-        Command(r"#regexif(?: (?P<bool>true|false))?", "", "",
+        Command(r"#regexif(?: (?P<bool>true|false))?",
+                "#regexif [true|false]",
+                "Enable or disable the execution of rules.",
                 set_regexif,
                 display_condition = lambda message, metadata, bot: False,
                 exec_condition = lambda message, metadata, bot: metadata["is_mod"],
