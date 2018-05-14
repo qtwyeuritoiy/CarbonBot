@@ -10,7 +10,7 @@ from carbonbot import plugin_loader
 class Command:
     def __init__(self, regex, title, description, on_exec, raw_match=False,
             display_condition = lambda match, metadata, bot: True,
-            exec_condition = lambda match, metadata, bot: True, flags = list()):
+            exec_condition = lambda match, metadata, bot: True, flags = None):
         self.regex = regex
         self.title = title
         self.description = description
@@ -18,7 +18,7 @@ class Command:
         self.func = on_exec
         self.display_condition = display_condition
         self.exec_condition = exec_condition
-        self.flags = flags
+        self.flags = flags if flags is not None else []
         self.raw_match = raw_match
 
     def __str__(self):
@@ -37,7 +37,7 @@ class Command:
 class CannedResponseCommand(Command):
     def __init__(self, regex, title, description, canned = "", raw_match=False,
             display_condition = lambda match, metadata, bot: True,
-            exec_condition = lambda match, metadata, bot: True, flags = list()):
+            exec_condition = lambda match, metadata, bot: True, flags = None):
         super(self.__class__, self).__init__(regex, title, description, self.canned, raw_match, display_condition, exec_condition, flags)
         self.canned_response = canned
 
@@ -290,8 +290,8 @@ class ConsoleAdapter(Adapter):
 
 
 class Carbon:
-    def __init__(self, adapters, commands = []):
-        self.commands = commands
+    def __init__(self, adapters, commands = None):
+        self.commands = commands if commands is not None else []
         self.adapters = adapters
         self.metadata = dict()
         for _id in self.adapters:
@@ -299,7 +299,7 @@ class Carbon:
 
 
     def add_commands(self, *commands):
-        self.commands.extend(commands)
+        self.commands += commands
 
 
     def run(self):
