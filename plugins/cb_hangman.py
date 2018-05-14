@@ -7,10 +7,9 @@ from carbonbot import Command
 # Word selection stuff
 
 with open('./hangman_words.txt', 'r') as _word_list_file:
-    _WORD_LIST = tuple(map(
-        lambda x: x.rstrip('\n').lower(),
-        _word_list_file.readlines()
-    ))
+    _WORD_LIST = tuple(map(lambda x: x.rstrip('\n').lower(),
+                           _word_list_file.readlines()
+                           ))
 
 
 def candidate(word, pattern, previous_letters):
@@ -21,18 +20,16 @@ def candidate(word, pattern, previous_letters):
             # All letters must either
             #  1) match and have been guessed or
             #  2) be blank and have not been guessed
-            all(
-                (letter == pattern_char and letter in previous_letters) or (pattern_char == '_' and letter not in previous_letters)
+            all((letter == pattern_char and letter in previous_letters) or (pattern_char == '_' and letter not in previous_letters)
                 for letter, pattern_char in zip(word, pattern)
-               )
-           )
+                )
+            )
 
 
 def fill(word, pattern, letter_to_reveal):
-    return ''.join(
-                   letter if letter == letter_to_reveal else pattern_char
+    return ''.join(letter if letter == letter_to_reveal else pattern_char
                    for letter, pattern_char in zip(word, pattern)
-                  )
+                   )
 
 
 def select(pattern, previous_letters, guessed_letter):
