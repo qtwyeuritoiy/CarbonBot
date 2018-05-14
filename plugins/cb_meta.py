@@ -10,10 +10,8 @@ start_time = time.time()
 
 def print_help(match, metadata, bot):
     linecount = 4
-    command_list = list()
-    for command in bot.commands:
-        if command.display_condition(match[0], metadata, bot):
-            command_list.append(command)
+    command_list = tuple(x for x in bot.commands
+                         if x.display_condition(match[0], metadata, bot) and x.title)
 
     command_count = len(command_list)
     try:
