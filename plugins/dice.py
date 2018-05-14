@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 
 import dice, re, numbers
-from carbon2_command_classes import Command
+from carbonbot import Command
+
 
 def format_six_faced_die(value):
     return ("⚀", "⚁", "⚂", "⚃", "⚄", "⚅")[value-1]
@@ -80,4 +81,11 @@ def dice_fun(match, metadata, bot):
     if dice_expression.min_value == dice_expression.max_value:
         bot.send("(seriously tho?)", metadata['from_group'], metadata['_id'])
 
-dice_cmd = Command(r"{ident}dice(?: (?P<dicespec>.+))?", "dice (<dice specification>)", "Roll a dice.", dice_fun)
+
+def register_with(carbon):
+    carbon.add_commands(
+        Command(r"{ident}dice(?: (?P<dicespec>.+))?",
+                "dice (<dice specification>)",
+                "Roll a dice.",
+                dice_fun),
+    )

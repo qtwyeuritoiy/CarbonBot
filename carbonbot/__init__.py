@@ -1,8 +1,51 @@
 #!/usr/bin/env python3
 
-import base64, logging, os, re, socket, ssl, threading, time
-import carbon2_commands
+import base64, logging, os, re, socket, ssl, threading, time, traceback, sys
 from datetime import datetime
+from carbonbot import plugin_loader
+
+
+# Commands
+
+class Command:
+    def __init__(self, regex, title, description, on_exec, raw_match=False,
+            display_condition = lambda match, metadata, bot: True,
+            exec_condition = lambda match, metadata, bot: True, flags = list()):
+        self.regex = regex
+        self.title = title
+        self.description = description
+        self.on_exec = self.run_on_sandbox
+        self.func = on_exec
+        self.display_condition = display_condition
+        self.exec_condition = exec_condition
+        self.flags = flags
+        self.raw_match = raw_match
+
+    def __str__(self):
+        return '<Command "{}">'.format(self.title)
+
+    def run_on_sandbox(self, match, metadata, bot):
+        try:
+            if self.exec_condition(match, metadata, bot):
+                self.func(match, metadata, bot)
+        except Exception as e:
+            traceback.print_exc()
+            bot.send("Oops! Something Went Horribly Wrong! (%s)" % e,
+                    metadata['from_group'], metadata['_id'])
+
+
+class CannedResponseCommand(Command):
+    def __init__(self, regex, title, description, canned = "", raw_match=False,
+            display_condition = lambda match, metadata, bot: True,
+            exec_condition = lambda match, metadata, bot: True, flags = list()):
+        super(self.__class__, self).__init__(regex, title, description, self.canned, raw_match, display_condition, exec_condition, flags)
+        self.canned_response = canned
+
+    def canned(self, match, metadata, bot):
+        bot.send(self.canned_response, metadata['from_group'], metadata['_id'])
+
+
+# Adapters
 
 class Adapter(threading.Thread):
     def __init__(self, identifier="!"):
@@ -171,6 +214,7 @@ class IRCAdapter(Adapter):
             except Exception as e:
                 self.logger.error("Error while reading socket.", exc_info=True)
 
+
 class TelegramAdapter(Adapter):
     def __init__(self, token, admin_id):
         super(self.__class__, self).__init__(r"[!/]")
@@ -209,6 +253,7 @@ class TelegramAdapter(Adapter):
 
     def reply(self, message, to, group):
         self.bot.send_message(chat_id=group, text=message, reply_to_message_id=to)
+
 
 class ConsoleAdapter(Adapter):
     def __init__(self, nick="Carbon"):
@@ -252,9 +297,15 @@ class Carbon:
         for _id in self.adapters:
             self.adapters[_id].register_callback(self.process, _id)
 
+
+    def add_commands(self, *commands):
+        self.commands.extend(commands)
+
+
     def run(self):
         for adapter in self.adapters.values():
             adapter.start()
+
 
     def process(self, message, metadata):
         found_match = False
@@ -273,35 +324,51 @@ class Carbon:
         if not found_match and re.match(metadata["ident"], message):
             self.reply('Command not recognized. Use the command help for help.', metadata["message_id"], metadata['from_group'], metadata['_id'])
 
+
     def send(self, message, group, _id):
         self.adapters[_id].send(message, group)
 
+
     def reply(self, message, to, group, _id):
         self.adapters[_id].reply(message, to, group)
+
 
     def finalise(self):
         for adapter in self.adapters.values():
             adapter.finalise()
 
-if __name__ == "__main__":
-    if os.environ.get('CARBON_CONSOLE'):
-        adapters = {"console": ConsoleAdapter()}
-        Carbon(adapters, carbon2_commands.commands).run()
 
+def main(*args, **kwargs):
+    console = os.environ.get('CARBON_CONSOLE') or "--console" in args
+
+    if console:
+        adapters = {"console": ConsoleAdapter()}
     else:
-        telegram = TelegramAdapter(os.environ.get('TELEGRAM_BOT_TOKEN'), os.environ.get('TELEGRAM_BOT_OWNER'))
-        freenode = IRCAdapter(os.environ.get('IRC_SERVER_ADDRESS'), int(os.environ.get('IRC_SERVER_PORT')),
-            bool(os.environ.get('IRC_SERVER_IS_SSL')), os.environ.get('IRC_CHANNELS').split(","),
-            os.environ.get('IRC_OWNER'), nick = os.environ.get('IRC_NICK'), password=os.environ.get('IRC_SASL_PASSWORD'),
-            is_sasl = bool(os.environ.get('IRC_SERVER_IS_SASL')))
+        telegram = TelegramAdapter(os.environ.get('TELEGRAM_BOT_TOKEN'),
+                                   os.environ.get('TELEGRAM_BOT_OWNER')
+                                   )
+        freenode = IRCAdapter(os.environ.get('IRC_SERVER_ADDRESS'),
+                              int(os.environ.get('IRC_SERVER_PORT')),
+                              bool(os.environ.get('IRC_SERVER_IS_SSL')),
+                              os.environ.get('IRC_CHANNELS').split(","),
+                              os.environ.get('IRC_OWNER'),
+                              nick = os.environ.get('IRC_NICK'),
+                              password = os.environ.get('IRC_SASL_PASSWORD'),
+                              is_sasl = bool(os.environ.get('IRC_SERVER_IS_SASL'))
+                              )
         adapters = {"carbon_telegram_bot": telegram, "freenode_carbon_bot": freenode}
 
-        Carbon(adapters, carbon2_commands.commands).run()
+    carbon = Carbon(adapters)
 
-        #Logging code.
-        #Will clean up later.
+    plugin_loader.load_and_register_all(carbon)
+
+    if not console:
+        # Logging code.
+        # TODO Clean up
         logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
         handler = logging.FileHandler('carbon.log')
         handler.setLevel(logging.INFO)
         formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
         handler.setFormatter(formatter)
+
+    carbon.run()
