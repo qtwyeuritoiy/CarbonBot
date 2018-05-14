@@ -352,8 +352,8 @@ def main(*args, **kwargs):
                               os.environ.get('IRC_CHANNELS').split(","),
                               os.environ.get('IRC_OWNER'),
                               nick = os.environ.get('IRC_NICK'),
-                              password = os.environ.get('IRC_SASL_PASSWORD'),
-                              is_sasl = bool(os.environ.get('IRC_SERVER_IS_SASL'))
+                              is_sasl = bool(os.environ.get('IRC_SERVER_IS_SASL')),
+                              password = os.environ.get('IRC_SASL_PASSWORD') if bool(os.environ.get('IRC_SERVER_IS_SASL')) else None
                               )
         adapters = {"carbon_telegram_bot": telegram, "freenode_carbon_bot": freenode}
 
