@@ -289,7 +289,8 @@ class ConsoleAdapter(Adapter):
 
 
 class Carbon:
-    def __init__(self, adapters, commands = None):
+    def __init__(self, adapters, source_url, commands = None):
+        self.SOURCE_URL = source_url
         self.commands = commands if commands is not None else []
         self.adapters = adapters
         self.metadata = dict()
@@ -357,7 +358,7 @@ def main(*args, **kwargs):
                               )
         adapters = {"carbon_telegram_bot": telegram, "freenode_carbon_bot": freenode}
 
-    carbon = Carbon(adapters)
+    carbon = Carbon(adapters, os.environ.get('SOURCE_URL'))
 
     plugin_loader.load_and_register_all(carbon)
 

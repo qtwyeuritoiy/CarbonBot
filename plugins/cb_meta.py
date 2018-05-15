@@ -53,7 +53,7 @@ def register_with(carbon):
                               canned = \
 """Carbon 2.0 alpha
 A Multi-Protocol Bot developed by imsesaok with contributions by M1dgard.
-https://github.com/qtwyeuritoiy/CarbonBot2"""
+Source code: {}""".format(carbon.SOURCE_URL)
                               ),
 
         # Ping to test connection
