@@ -51,6 +51,7 @@ class Adapter(threading.Thread):
     def __init__(self, identifier="!"):
         self.identifier = identifier
         self.identifier_optional = "(?:" + self.identifier + ")?"
+        self.owner = None
 
     def register_callback(self, func, _id):
         pass
@@ -216,14 +217,14 @@ class IRCAdapter(Adapter):
 
 
 class TelegramAdapter(Adapter):
-    def __init__(self, token, admin_id):
+    def __init__(self, token, owner):
         super(self.__class__, self).__init__(r"[!/]")
         from telegram.ext import Updater
         self.updater = Updater(token = token)
         self.dispatcher = self.updater.dispatcher
         self.bot = self.updater.bot
         self.bot_id = self.bot.get_me()["username"]
-        self.admin_id = admin_id
+        self.owner = owner
         threading.Thread.__init__(self)
 
     def run(self):
@@ -244,9 +245,12 @@ class TelegramAdapter(Adapter):
         when = update.message.date
         metadata = {"from_user": from_user, "from_group": from_group, "when": when,
                 "_id": self._id, "ident": self.identifier, "type": self.__class__.__name__,
-                "mentioned": "@"+self.bot_id in message, "is_mod": from_user == self.admin_id, #FIXME: Check for other admins in the channel.
+                "mentioned": "@"+self.bot_id in message, "is_mod": from_user == self.owner, #FIXME: Check for other admins in the channel.
                 "message_id": message_id, }
         self.callback(message, metadata)
+
+    def get_owner():
+        return self.owner
 
     def send(self, message, group):
         self.bot.send_message(chat_id=group, text=message)

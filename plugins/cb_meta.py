@@ -44,6 +44,11 @@ def print_help(match, metadata, bot):
     bot.send(message, metadata['from_group'], metadata['_id'])
 
 
+def print_owner(match, metadata, bot):
+    bot.reply("{} is!".format(bot.adapters[metadata["_id"]].owner),
+              metadata["message_id"], metadata['from_group'], metadata['_id'])
+
+
 def register_with(carbon):
     carbon.add_commands(
         # About the bot
@@ -75,6 +80,13 @@ Source code: {}""".format(carbon.SOURCE_URL)
                 "help <page>",
                 "Show this text.",
                 print_help
+                ),
+
+        # Print owner
+        Command(r"{ident}who(?:'|’)s your owner\?",
+                "who's your owner?",
+                "Show the owner of the bot",
+                print_owner
                 ),
 
         # Uptime
