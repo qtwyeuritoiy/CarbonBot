@@ -67,7 +67,8 @@ https://github.com/qtwyeuritoiy/CarbonBot2"""
         Command(r"{ident}echo(?: (?P<message>.+))?",
                 "echo <message>",
                 "Echo message.",
-                lambda match, metadata, bot: bot.reply(match['message'], metadata["message_id"], metadata['from_group'], metadata['_id']) if match['message'] else None
+                lambda match, metadata, bot: bot.reply(match['message'], metadata["message_id"], metadata['from_group'],
+                                                       metadata['_id']) if match['message'] else None
                 ),
 
         # Help
@@ -81,6 +82,7 @@ https://github.com/qtwyeuritoiy/CarbonBot2"""
         Command(r"{ident}uptime",
                 "uptime",
                 "Show how long the bot has been operating.",
-                lambda match, metadata, bot: bot.reply(str(timedelta(seconds=time.time() - start_time)), metadata["message_id"], metadata['from_group'], metadata['_id'])
+                lambda match, metadata, bot: bot.reply(str(timedelta(seconds=time.time() - start_time)),
+                                                       metadata["message_id"], metadata['from_group'], metadata['_id'])
                 ),
     )

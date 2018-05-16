@@ -24,22 +24,26 @@ def add(match, metadata, bot):
     try:
         re.compile(condition)
     except re.error as e:
-        bot.reply("Rule not accepted: regular expression is not valid. ({})".format(e), metadata["message_id"], metadata['from_group'], metadata['_id'])
+        bot.reply("Rule not accepted: regular expression is not valid. ({})".format(e),
+                  metadata["message_id"], metadata['from_group'], metadata['_id'])
         return
 
-    conditional_cmd = Command(condition, condition, command_str, lambda match, metadata, bot:
-        nested_eval(match, metadata, bot, command_str), flags=["echo"],
-        display_condition = lambda message, metadata, bot: False,
-        exec_condition = lambda message, metadata, bot:
-            metadata['from_group'] == group and metadata["_id"] == adapter_id and bot.metadata.get("regexif", True) and not metadata.get("nested", False))
+    conditional_cmd = Command(condition, condition, command_str,
+                              lambda match, metadata, bot: nested_eval(match, metadata, bot, command_str), flags=["echo"],
+                              display_condition = lambda message, metadata, bot: False,
+                              exec_condition = lambda message, metadata, bot: metadata['from_group'] == group \
+                                                                              and metadata["_id"] == adapter_id \
+                                                                              and metadata.get("regexif", True) \
+                                                                              and not metadata.get("nested", False))
 
     command_works=False
 
     for command in bot.commands:
         if command.exec_condition(match, metadata, bot):
             if condition == command.regex and "echo" in command.flags:
-                bot.reply("Rule not accepted: rule already exists. ('{}' -> {})\nDelete the command before writing a new one.".format(command.regex, command.description),
-                        metadata["message_id"], metadata['from_group'], metadata['_id'])
+                bot.reply("Rule not accepted: rule already exists. ('{}' -> {})\n"\
+                          "Delete the command before writing a new one.".format(command.regex, command.description),
+                          metadata["message_id"], metadata['from_group'], metadata['_id'])
                 return
             elif re.search("^{command}$".format(command=command.regex.format(ident=metadata["ident"])), condition) and not command.raw_match: #The condition matches the regex of the existing command.
                 bot.reply("Rule not accepted: you cannot override existing commands.", metadata["message_id"], metadata['from_group'], metadata['_id'])
