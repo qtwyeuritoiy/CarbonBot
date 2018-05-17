@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-import time
+import time, re
 from datetime import timedelta
 from carbonbot import Command, CannedResponseCommand
 
@@ -8,41 +8,62 @@ from carbonbot import Command, CannedResponseCommand
 start_time = time.time()
 
 
-def print_help(match, metadata, bot):
+def display_paginated(metadata, bot, _list, index):
     linecount = 4
-    command_list = tuple(x for x in bot.commands
-                         if x.display_condition(match[0], metadata, bot) and x.title)
+    list_length = len(_list)
+    start_index = index * linecount
+    end_index = start_index + linecount
 
-    command_count = len(command_list)
-    try:
-        index = int(match['page'].strip()) - 1
-    except ValueError:
-        bot.reply("Invalid argument: expecting integer.", metadata["message_id"], metadata['from_group'], metadata['_id'])
-        return
-    except AttributeError:
-        index = 0
+    if index < 0:
+        raise IndexError("Invalid number: use a number above or equal to 1.")
 
-    start = index * linecount
-    end = start + linecount
+    maximum = int(-(-list_length // linecount))
+    if list_length < end_index:
+        end_index = list_length
+        if end_index <= start_index:
+            raise IndexError("Invalid number: use a number below or equal to " + str(maximum) + ".")
 
-    maximum = int(-(-command_count // linecount))
-    if command_count < end:
-        end = command_count
-        if end <= start:
-            bot.reply("Invalid number: use a number below " + str(maximum) + ".", metadata["message_id"],
-                metadata['from_group'], metadata['_id'])
-            return
-
-    bot.reply("Usage: <identifier><command>\nIdentifier setting for the current adapter: `{}`\n".format(metadata["ident"]),
-        metadata["message_id"], metadata['from_group'], metadata['_id'])
-
-    message = "Commands: " + str(index + 1) + " out of " + str(maximum)
-    for i in range(start, end):
-        command = bot.commands[i]
+    message = ""
+    for i in range(start_index, end_index):
+        command = _list[i]
         message += "\n"+ command.title + ": " + command.description
 
-    bot.send(message, metadata['from_group'], metadata['_id'])
+    return (maximum, message)
 
+def print_help(match, metadata, bot):
+    command_list = tuple(x for x in bot.commands
+                         if x.display_condition(match, metadata, bot) and x.title)
+    target_cmd = ""
+
+    args = match.groupdict()
+    if args["page"]:
+        index = int(args['page'].strip()) - 1
+    elif args["command"]:
+        target_cmd = args['command']
+    else:
+        index = 0
+
+    if target_cmd:
+        for command in list(command_list):
+            if re.search("^{}$".format(command.regex.format(ident=metadata["ident"])), target_cmd) or target_cmd in command.title:
+                bot.reply(command.title + ": " + command.description, metadata["message_id"], metadata['from_group'], metadata['_id'])
+                return
+        bot.reply("Command '{}' does not exist or is not available.".format(target_cmd), metadata["message_id"], metadata['from_group'], metadata['_id'])
+    else:
+        try:
+            maximum, list_message = display_paginated(metadata, bot, command_list, index)
+            bot.reply("Usage: <identifier><command>\nIdentifier setting for the current adapter: `{}`\n".format(metadata["ident"]),
+                      metadata["message_id"], metadata['from_group'], metadata['_id'])
+
+            command_count = len(command_list)
+            message = "Commands: {current} out of {maximum}\n".format(current=index+1, maximum=maximum)
+            message += "Total of {total} command{s} {are} available.".format(total=command_count,
+                                                                             s="s" if command_count > 1 else "",
+                                                                             are="are" if command_count > 1 else "is")
+            message += list_message
+            bot.send(message, metadata['from_group'], metadata['_id'])
+        except IndexError as e:
+            bot.reply(str(e), metadata["message_id"], metadata['from_group'], metadata['_id'])
 
 def print_owner(match, metadata, bot):
     bot.reply("{} is!".format(bot.adapters[metadata["_id"]].owner),
@@ -72,13 +93,14 @@ Source code: {}""".format(carbon.SOURCE_URL)
         Command(r"{ident}echo(?: (?P<message>.+))?",
                 "echo <message>",
                 "Echo message.",
-                lambda match, metadata, bot: bot.reply(match['message'], metadata["message_id"], metadata['from_group'], metadata['_id']) if match['message'] else None
+                lambda match, metadata, bot: bot.reply(match['message'], metadata["message_id"], metadata['from_group'],
+                                                       metadata['_id']) if match['message'] else None
                 ),
 
         # Help
-        Command(r"{ident}help(?: ?(?P<page>\d+))?",
-                "help <page>",
-                "Show this text.",
+        Command(r"{ident}help(?: ?(?:(?P<page>\d+)|(?P<command>.+)))?",
+                "help <page>|<command>",
+                "Show help text for a page or command.",
                 print_help
                 ),
 
@@ -93,6 +115,7 @@ Source code: {}""".format(carbon.SOURCE_URL)
         Command(r"{ident}uptime",
                 "uptime",
                 "Show how long the bot has been operating.",
-                lambda match, metadata, bot: bot.reply(str(timedelta(seconds=time.time() - start_time)), metadata["message_id"], metadata['from_group'], metadata['_id'])
+                lambda match, metadata, bot: bot.reply(str(timedelta(seconds=time.time() - start_time)),
+                                                       metadata["message_id"], metadata['from_group'], metadata['_id'])
                 ),
     )

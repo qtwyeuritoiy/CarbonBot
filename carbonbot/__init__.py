@@ -42,7 +42,7 @@ class CannedResponseCommand(Command):
         self.canned_response = canned
 
     def canned(self, match, metadata, bot):
-        bot.send(self.canned_response, metadata['from_group'], metadata['_id'])
+        bot.reply(self.canned_response, metadata["message_id"], metadata['from_group'], metadata['_id'])
 
 
 # Adapters
