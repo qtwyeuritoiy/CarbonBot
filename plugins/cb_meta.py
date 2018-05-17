@@ -57,7 +57,7 @@ def print_help(match, metadata, bot):
 
             command_count = len(command_list)
             message = "Commands: {current} out of {maximum}\n".format(current=index+1, maximum=maximum)
-            message += "Total of {total} command{s} {are} available.\n".format(total=command_count,
+            message += "Total of {total} command{s} {are} available.".format(total=command_count,
                                                                              s="s" if command_count > 1 else "",
                                                                              are="are" if command_count > 1 else "is")
             message += list_message
