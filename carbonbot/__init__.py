@@ -321,7 +321,8 @@ class Carbon:
                 command.on_exec(match, {**metadata, **self.metadata}, self)
 
         if not found_match and re.match(metadata["ident"], message):
-            self.reply('Command not recognized. Use the command help for help.', metadata["message_id"], metadata['from_group'], metadata['_id'])
+            if isinstance(self.adapters[metadata["_id"]], IRCAdapter):
+                self.reply('Command not recognized. Use the command help for help.', metadata["message_id"], metadata['from_group'], metadata['_id'])
 
 
     def send(self, message, group, _id):
