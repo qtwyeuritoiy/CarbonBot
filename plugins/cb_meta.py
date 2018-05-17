@@ -8,41 +8,55 @@ from carbonbot import Command, CannedResponseCommand
 start_time = time.time()
 
 
-def print_help(match, metadata, bot):
+def display_paginated(metadata, bot, _list, index):
     linecount = 4
-    command_list = tuple(x for x in bot.commands
-                         if x.display_condition(match[0], metadata, bot) and x.title)
+    list_length = len(_list)
+    start_index = index * linecount
+    end_index = start_index + linecount
 
-    command_count = len(command_list)
-    try:
-        index = int(match['page'].strip()) - 1
-    except ValueError:
-        bot.reply("Invalid argument: expecting integer.", metadata["message_id"], metadata['from_group'], metadata['_id'])
-        return
-    except AttributeError:
-        index = 0
+    if index < 0:
+        raise IndexError("Invalid number: use a number above or equal to 1.")
 
-    start = index * linecount
-    end = start + linecount
+    maximum = int(-(-list_length // linecount))
+    if list_length < end_index:
+        end_index = list_length
+        if end_index <= start_index:
+            raise IndexError("Invalid number: use a number below or equal to " + str(maximum) + ".")
 
-    maximum = int(-(-command_count // linecount))
-    if command_count < end:
-        end = command_count
-        if end <= start:
-            bot.reply("Invalid number: use a number below " + str(maximum) + ".", metadata["message_id"],
-                metadata['from_group'], metadata['_id'])
-            return
-
-    bot.reply("Usage: <identifier><command>\nIdentifier setting for the current adapter: `{}`\n".format(metadata["ident"]),
-        metadata["message_id"], metadata['from_group'], metadata['_id'])
-
-    message = "Commands: " + str(index + 1) + " out of " + str(maximum)
-    for i in range(start, end):
-        command = bot.commands[i]
+    message = ""
+    for i in range(start_index, end_index):
+        command = _list[i]
         message += "\n"+ command.title + ": " + command.description
 
-    bot.send(message, metadata['from_group'], metadata['_id'])
+    return (maximum, message)
 
+def print_help(match, metadata, bot):
+    command_list = tuple(x for x in bot.commands
+                         if x.display_condition(match[0], metadata, bot) and x.title)
+    target_cmd = ""
+
+    args = match.groupdict()
+    if args["page"]:
+        index = int(args['page'].strip()) - 1
+    elif args["command"]:
+        target_cmd = args['command']
+    else:
+        index = 0
+
+    if target_cmd:
+        #for command in command_list:
+        pass
+    else:
+        try:
+            maximum, list_message = display_paginated(metadata, bot, command_list, index)
+            bot.reply("Usage: <identifier><command>\nIdentifier setting for the current adapter: `{}`\n".format(metadata["ident"]),
+                      metadata["message_id"], metadata['from_group'], metadata['_id'])
+
+            message = "Commands: " + str(index+1) + " out of " + str(maximum)
+            message += list_message
+            bot.send_index(message, metadata['from_group'], metadata['_id'])
+        except IndexError as e:
+            bot.reply(str(e), metadata["message_id"], metadata['from_group'], metadata['_id'])
 
 def register_with(carbon):
     carbon.add_commands(
@@ -72,9 +86,9 @@ https://github.com/qtwyeuritoiy/CarbonBot2"""
                 ),
 
         # Help
-        Command(r"{ident}help(?: ?(?P<page>\d+))?",
-                "help <page>",
-                "Show this text.",
+        Command(r"{ident}help(?: ?(?:(?P<page>\d+)|(?P<command>\s+)))?",
+                "help <page>|<command>",
+                "Show help text for a page or command.",
                 print_help
                 ),
 
