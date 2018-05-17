@@ -99,27 +99,62 @@ def remove_matching(match, metadata, bot):
     else:
         bot.reply("No matching rules exist.", metadata["message_id"], metadata['from_group'], metadata['_id'])
 
+def display_paginated(metadata, bot, _list, index):
+    linecount = 4
+    list_length = len(_list)
+    start_index = index * linecount
+    end_index = start_index + linecount
+
+    if index < 0:
+        raise IndexError("Invalid number: use a number above or equal to 1.")
+
+    maximum = int(-(-list_length // linecount))
+    if list_length < end_index:
+        end_index = list_length
+        if end_index <= start_index:
+            raise IndexError("Invalid number: use a number below or equal to " + str(maximum) + ".")
+
+    message = ""
+    for i in range(start_index, end_index):
+        command = _list[i]
+        message += "'{}' -> {}\n".format(command.title, command.description)
+
+    return (maximum, message.strip())
 
 def show(match, metadata, bot):
-    try:
-        condition = match["condition"]
-    except AttributeError:
-        condition = None
+    rule_list = tuple(x for x in bot.commands
+                         if "echo" in x.flags and x.exec_condition(match, metadata, bot))
+
+    args = match.groupdict()
+    condition = ""
+    if args["page"]:
+        index = int(args['page'].strip()) - 1
+    elif args["condition"]:
+        condition = args['condition']
+    else:
+        index = 0
 
     if condition:
-        for command in bot.commands:
+        for command in rule_list:
             if condition == command.regex and "echo" in command.flags and command.exec_condition(match, metadata, bot):
                 bot.reply("'{}' -> {}".format(command.title, command.description), metadata["message_id"], metadata['from_group'], metadata['_id'])
                 return
         bot.reply("Rule with condition '{}' not found.".format(condition), metadata["message_id"], metadata['from_group'], metadata['_id'])
+
     else:
-        rules = ""
-        for command in bot.commands:
-            if "echo" in command.flags and command.exec_condition(match, metadata, bot):
-                rules += "'{}' -> {}\n".format(command.title, command.description)
-        rules = rules.strip()
-        if rules:
-            bot.reply(rules, metadata["message_id"], metadata['from_group'], metadata['_id'])
+        rule_count = len(rule_list)
+        if rule_count > 0:
+            try:
+                maximum, list_message = display_paginated(metadata, bot, rule_list, index)
+
+                message = "Rules: {current} out of {maximum}\n".format(current=index+1, maximum=maximum)
+                message += "Total of {total} rule{s} {are} available.\n".format(total=rule_count,
+                                                                                 s="s" if rule_count > 1 else "",
+                                                                                 are="are" if rule_count > 1 else "is")
+                message += list_message
+                bot.reply(message, metadata["message_id"], metadata['from_group'], metadata['_id'])
+            except IndexError as e:
+                bot.reply(str(e), metadata["message_id"], metadata['from_group'], metadata['_id'])
         else:
             bot.reply("No rules defined.", metadata["message_id"], metadata['from_group'], metadata['_id'])
 
@@ -148,9 +183,9 @@ def register_with(carbon):
                 ),
 
         # Show rules
-        Command(r"{ident}rule(?: (?P<condition>.+))?",
-                "rule <condition>",
-                "Display all rules or (if condition is given) display rules matching given condition.",
+        Command(r"{ident}rule(?: ?(?:(?P<page>\d+)|(?P<condition>.+)))?",
+                "rule <condition>|<page>",
+                "Display all rules by page (if page is given) or (if condition is given) display rules matching given condition.",
                 show
                 ),
 
