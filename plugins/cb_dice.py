@@ -78,8 +78,11 @@ def dice_fun(match, metadata, bot):
     bot.reply(formatted, metadata["message_id"], metadata['from_group'], metadata['_id'])
 
     # dice_expression.sides is broken: it gives 1 for fudge dice (-1 through 1), who clearly have 3 sides
-    if dice_expression.min_value == dice_expression.max_value:
-        bot.send("(seriously tho?)", metadata['from_group'], metadata['_id'])
+    try:
+        if dice_expression.min_value == dice_expression.max_value:
+            bot.send("(seriously tho?)", metadata['from_group'], metadata['_id'])
+    except AttributeError:
+        pass
 
 
 def register_with(carbon):
