@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-import time
+import time, re
 from datetime import timedelta
 from carbonbot import Command, CannedResponseCommand
 
@@ -32,7 +32,7 @@ def display_paginated(metadata, bot, _list, index):
 
 def print_help(match, metadata, bot):
     command_list = tuple(x for x in bot.commands
-                         if x.display_condition(match[0], metadata, bot) and x.title)
+                         if x.display_condition(match, metadata, bot) and x.title)
     target_cmd = ""
 
     args = match.groupdict()
@@ -44,17 +44,24 @@ def print_help(match, metadata, bot):
         index = 0
 
     if target_cmd:
-        #for command in command_list:
-        pass
+        for command in list(command_list):
+            if re.search("^{}$".format(command.regex.format(ident=metadata["ident"])), target_cmd) or target_cmd in command.title:
+                bot.reply(command.title + ": " + command.description, metadata["message_id"], metadata['from_group'], metadata['_id'])
+                return
+        bot.reply("Command '{}' does not exist or is not available.".format(target_cmd), metadata["message_id"], metadata['from_group'], metadata['_id'])
     else:
         try:
             maximum, list_message = display_paginated(metadata, bot, command_list, index)
             bot.reply("Usage: <identifier><command>\nIdentifier setting for the current adapter: `{}`\n".format(metadata["ident"]),
                       metadata["message_id"], metadata['from_group'], metadata['_id'])
 
-            message = "Commands: " + str(index+1) + " out of " + str(maximum)
+            command_count = len(command_list)
+            message = "Commands: {current} out of {maximum}\n".format(current=index+1, maximum=maximum)
+            message += "Total of {total} command{s} {are} available.\n".format(total=command_count,
+                                                                             s="s" if command_count > 1 else "",
+                                                                             are="are" if command_count > 1 else "is")
             message += list_message
-            bot.send_index(message, metadata['from_group'], metadata['_id'])
+            bot.send(message, metadata['from_group'], metadata['_id'])
         except IndexError as e:
             bot.reply(str(e), metadata["message_id"], metadata['from_group'], metadata['_id'])
 
@@ -86,7 +93,7 @@ https://github.com/qtwyeuritoiy/CarbonBot2"""
                 ),
 
         # Help
-        Command(r"{ident}help(?: ?(?:(?P<page>\d+)|(?P<command>\s+)))?",
+        Command(r"{ident}help(?: ?(?:(?P<page>\d+)|(?P<command>.+)))?",
                 "help <page>|<command>",
                 "Show help text for a page or command.",
                 print_help
