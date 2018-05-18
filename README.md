@@ -1,6 +1,7 @@
+# CarbonBot
+
 ![](docs/carbon.png)
 
-# CarbonBot
 Multi-Platform Chatbot in Python.
 
 ⚠️ This project is of early alpha quality. The structure and plugin API can change dramatically.
