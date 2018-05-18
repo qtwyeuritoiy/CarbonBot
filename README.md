@@ -1,8 +1,7 @@
-<p align="center">
-  <a href="https://qtwyeuritoiy.github.io/CarbonBot2">
-    <img alt="Carbon" src="docs/carbon_transparent.png" width="546">
-  </a>
-</p>
+![](docs/carbon_transparent.png)
+
+---
+
 # CarbonBot
 Multi-Platform Chatbot in Python.
 
