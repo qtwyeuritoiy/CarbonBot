@@ -1,6 +1,4 @@
-![](docs/carbon_transparent.png)
-
----
+![](docs/carbon.png)
 
 # CarbonBot
 Multi-Platform Chatbot in Python.
