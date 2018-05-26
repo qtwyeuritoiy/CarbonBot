@@ -10,6 +10,10 @@ def nested_eval(match, metadata, bot, command):
 
 
 def add(match, metadata, bot):
+    if not metadata.get("regexif", True):
+        bot.reply("This feature is currently disabled.", metadata["message_id"], metadata['from_group'], metadata['_id'])
+        return
+
     try:
         if not match['condition'] or not match['command']: return
 
@@ -122,6 +126,10 @@ def display_paginated(metadata, bot, _list, index):
     return (maximum, message.strip())
 
 def show(match, metadata, bot):
+    if not metadata.get("regexif", True):
+        bot.reply("The feature is currently disabled.", metadata["message_id"], metadata['from_group'], metadata['_id'])
+        return
+
     rule_list = tuple(x for x in bot.commands
                          if "echo" in x.flags and x.exec_condition(match, metadata, bot))
 
