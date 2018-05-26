@@ -6,6 +6,7 @@ name = "pypi"
 [packages]
 python-telegram-bot = "*"
 "dice" = "*"
+duckduckpy = "*"
 
 [dev-packages]
 
