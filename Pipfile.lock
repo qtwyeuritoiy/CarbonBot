@@ -1,7 +1,7 @@
 {
     "_meta": {
         "hash": {
-            "sha256": "3f3537599511468a4db502990744f776a827bc59fd6f472266c0e8c0a564eed1"
+            "sha256": "64e5d48b0d808ab6803998c4e64b1d026f905f67405ab47bf46c050c46e8005f"
         },
         "pipfile-spec": 6,
         "requires": {
@@ -36,6 +36,13 @@
                 "sha256:49b3a825280bd66b3aa83585ef59c4a8c82f2c8a522dbe754a8bc8d08c85c491"
             ],
             "version": "==0.6.2"
+        },
+        "duckduckpy": {
+            "hashes": [
+                "sha256:608c2972efc375d3af88fef12a182e62bd8e3f971fc1e51877a2f636599e18b8"
+            ],
+            "index": "pypi",
+            "version": "==0.2"
         },
         "future": {
             "hashes": [

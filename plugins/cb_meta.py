@@ -26,7 +26,7 @@ def display_paginated(metadata, bot, _list, index):
     message = ""
     for i in range(start_index, end_index):
         command = _list[i]
-        message += "\n"+ command.title + ": " + command.description
+        message += "\n"+ command.title + ": " + command.description.split("\n")[0]
 
     return (maximum, message)
 
